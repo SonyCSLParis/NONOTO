@@ -1,13 +1,12 @@
 require('jquery-simple-upload');
 
-let serverConfig: object = require('./config.json')
-
-let serverUrl = `http://${serverConfig['server_ip']}:${serverConfig['chorale_port']}/`;
-let generateArgs: string = 'analyze-audio';
+// let serverConfig: object = require('./config.json');
+// let serverUrl = `http://${serverConfig['server_ip']}:${serverConfig['chorale_port']}/`;
+// let serverUrl = 'http://localhost:5001/'
 
 let useFineUpload: boolean = false;
-
-export function createWavInput(onSuccess: Function): void {
+export function createWavInput(urlAnalyze, onSuccess: Function): void {
+  let generateArgs: string = urlAnalyze;
   if (useFineUpload) {
       import('fine-uploader')
       .then(qq => {
@@ -30,18 +29,18 @@ export function createWavInput(onSuccess: Function): void {
   }
   else {
       let simpleUpload: HTMLDivElement = document.createElement('div')
-      document.body.appendChild(simpleUpload)
+      document.body.appendChild(simpleUpload);
       let simpleUpload_html: string =
           `<div id="filename"></div>
           <div id="progress"></div>
           <div id="progressBar"></div>
-
           <label for="wav-input">Select a .wav file to upload</label>
-          <input type="file" name="audio" accept="audio/x-wav" id="wav-input"/>`
+          <input type="file" name="upload" accept="audio/x-wav" id="wav-input"/>`
+
       simpleUpload.innerHTML = simpleUpload_html;
 
       $('#wav-input').change(function() {
-          $(this).simpleUpload(serverUrl + generateArgs, {
+          ($(this) as any).simpleUpload(urlAnalyze, {
               start: function(file){
         				//upload started
         				$('#filename').html(file.name);
@@ -57,8 +56,8 @@ export function createWavInput(onSuccess: Function): void {
 
           			success: function(data){
           				//upload successful
-          				$('#progress').html("Success!<br>Data: " + JSON.stringify(data));
-                  onSuccess()
+          				$('#progress').html("Success!<br>Data: " + data);
+                  onSuccess(data)
           			},
 
           			error: function(error){

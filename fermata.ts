@@ -16,7 +16,8 @@ export class FermataBox extends AnnotationBox {
     }
 
     private sequenceDuration: number;
-    private containedQuarterNote: number = this.containedQuarterNotes[0]
+
+    private containedQuarterNote: number = this.containedQuarterNotes[0];
 
     public draw(): void {
         if (this.containedQuarterNote >= this.sequenceDuration-2) {
@@ -25,6 +26,7 @@ export class FermataBox extends AnnotationBox {
             this.container.classList.add('imposed');
             this.container.classList.add('active');
         }
+
         else {
             this.container.addEventListener('click', () => {
                 this.container.classList.toggle('active')

@@ -26,27 +26,36 @@
   },
   "homepage": "https://github.com/opensheetmusicdisplay/webpack-usage-example#readme",
   "devDependencies": {
-    "@types/jquery": "^3.3.2",
+    "@types/jquery": "^3.3.4",
+    "@types/node": "^10.5.0",
     "awesome-typescript-loader": "^3.5.0",
-    "copy-webpack-plugin": "^4.5.1",
+    "copy-webpack-plugin": "^4.5.2",
     "html-webpack-plugin": "^2.28.0",
     "http-server": "^0.11.1",
     "jquery": "^3.3.1",
     "json-loader": "^0.5.4",
     "node-sass": "^4.9.0",
-    "sass-loader": "^7.0.2",
-    "typescript": "^2.9.1",
+    "sass-loader": "^7.0.3",
+    "typescript": "^2.9.2",
     "webpack": "^2.7.0"
   },
   "dependencies": {
     "@types/bootstrap-slider": "^9.9.0",
     "bootstrap-slider": "^10.0.2",
     "css-loader": "^0.28.11",
+    "file-loader": "^1.1.11",
+    "fine-uploader": "^5.16.2",
+    "html-loader": "^0.5.5",
+    "jquery-simple-upload": "^1.1.0",
     "midiconvert": "^0.4.7",
     "nexusui": "^2.0.7",
     "nipplejs": "^0.6.8",
+    "recorder-js": "^1.0.7",
+    "require": "^2.4.20",
     "style-loader": "^0.21.0",
     "tone": "^0.12.80",
-    "tone-piano": "0.0.12"
+    "tone-piano": "0.0.12",
+    "webmidi": "^2.2.0",
+    "webpack-cli": "^3.0.8"
   }
 }

@@ -8,13 +8,15 @@ import {Piano} from 'tone-piano';
 import * as Tone from "tone";
 import { SampleLibrary } from './tonejs-instruments/Tonejs-Instruments'
 import * as Nexus from 'nexusui'
-
 import {ChordSelector} from './chord_selector';
+import {make_voices_lockets} from './unlock_voices'
+import { createWavInput } from './file_upload';
+import {Initialize_record} from './record_audio';
 
 import './styles/osmd.scss'
 import './styles/main.scss'
 
-let server_config = require('./config.json')
+let server_config = require('./config.json');
 
 
 // add Piano methods to Tone.Insutrument objects for duck typing
@@ -33,7 +35,8 @@ Tone.Instrument.prototype.pedalUp = function() {return this};
 // wheelimport.src = "https://cdn.jsdelivr.net/npm/wheelnav@1.7.1/js/dist/wheelnav.min.js"
 // document.head.appendChild(wheelimport)
 
-
+document.body.style.marginBottom = '15px';
+let stepBox = 0; // Number of changes from the initial partition (used to remove previous boxes)
 Nexus.colors.accent = '#ffb6c1';  // '#f40081';  //  light pink
 Nexus.colors.fill = '#e5f5fd';  // light blue // '#f0f2ff';  // lilac triadic to '#ffb6c1'
 
@@ -109,9 +112,8 @@ titlediv.style.alignContent = 'CenterTop'
 titlediv.style.width = '100%'
 titlediv.style.fontStyle = 'bold'
 titlediv.style.fontSize = '64px'
-// document.body.appendChild(titlediv)
-
-document.body.appendChild(document.createElement("div"))
+document.body.appendChild(titlediv);
+// document.body.appendChild(document.createElement("div"))
 
 let useLeadsheetMode = false;  // true for leadsheets, false for chorales
 let serverPort: number
@@ -120,9 +122,9 @@ if (useLeadsheetMode) {
 } else {
     serverPort = server_config['chorale_port']
 }
-let serverUrl = `http://localhost:${serverPort}/`
+let serverUrl = 'http://localhost:5001/'
+// let urlMidi = serverUrl + 'get-midi'
 // let serverUrl = `http://${server_config['server_ip']}:${serverPort}/`;
-
 let osmd: eOSMD;
 /*
  * Create a container element for OpenSheetMusicDisplay...
@@ -134,6 +136,7 @@ osmdContainer.classList.add('osmd-container')
  * ... and attach it to our HTML document's body. The document itself is a HTML5
  * stub created by Webpack, so you won't find any actual .html sources.
  */
+osmdContainer.style.margin = '0 0 0 75px'
 document.body.appendChild(osmdContainer);
 /*
  * Create a new instance of OpenSheetMusicDisplay and tell it to draw inside
@@ -179,7 +182,10 @@ osmd = new eOSMD(osmdContainer, true, useLeadsheetMode);
 // }, true);
 
 // uncomment the following for testing
-//loadMusicXMLandAudio('musicXmlSample.xml', '');
+// //loadMusicXMLandAudio('musicXmlSample.xml', '');
+
+make_voices_lockets();
+import{UrlTimerangeChange} from './unlock_voices';
 loadMusicXMLandMidi(serverUrl + 'ex', serverUrl + 'get-midi');
 
 function removeMusicXMLHeaderNodes(xmlDocument: XMLDocument): void{
@@ -221,17 +227,16 @@ function getMetadata() {
 }
 
 function onClickTimestampBoxFactory(timeStart: Fraction, timeEnd: Fraction) {
+    // k = k + 1;
     const  [quarternoteStart, quarternoteEnd] = ([timeStart, timeEnd].map(
         timeFrac => Math.round(4 * timeFrac.RealValue)))
 
-    const argsGenerationUrl = ("timerange-change" +
-        `?quarternoteStart=${quarternoteStart}` +
-        `&quarternoteEnd=${quarternoteEnd}`
-    );
+    const argsGenerationUrl = `?quarternoteStart=${quarternoteStart}` +
+        `&quarternoteEnd=${quarternoteEnd}`;
     const argsMidiUrl = "get-midi";
-
     return (function (this, event) {
-        loadMusicXMLandMidi(serverUrl + argsGenerationUrl,
+      console.log(UrlTimerangeChange)
+        loadMusicXMLandMidi(serverUrl + UrlTimerangeChange + argsGenerationUrl,
           serverUrl + argsMidiUrl);
     ;})
 }
@@ -269,10 +274,31 @@ function enableChanges(): void {
     toggleBusyClass(false);
 }
 
+function loadMusicXMLandMidi_callback (xmldata: XMLDocument, urlMidi: string) {
+  try{
+    removeMusicXMLHeaderNodes(xmldata);
+  }
+  catch(e){
+    console.log('No sound input detected');
+  }
+    osmd.load(xmldata)
+        .then(
+            () => {
+                stepBox = stepBox + 1
+                osmd.rendering(onClickTimestampBoxFactory, stepBox);
+                set_tone_time_parameters();
+                enableChanges();
+                loadMidi(urlMidi);
+            },
+            (err) => {console.log(err); enableChanges();}
+        );
+    // loadMidiToPiano(urlMidi);
+}
 
 /**
  * Load a MusicXml file via xhttp request, and display its contents.
  */
+
 function loadMusicXMLandMidi(urlXML: string, urlMidi: string) {
     disableChanges();
     console.log(JSON.stringify(getMetadata()));
@@ -281,19 +307,8 @@ function loadMusicXMLandMidi(urlXML: string, urlMidi: string) {
         data: JSON.stringify(getMetadata()),
         contentType: 'application/json',
         dataType: 'xml',
-        success: (xmldata: XMLDocument) => {
-            removeMusicXMLHeaderNodes(xmldata);
-            osmd.load(xmldata)
-                .then(
-                    () => {
-                        osmd.render(onClickTimestampBoxFactory);
-                        enableChanges()
-                    },
-                    (err) => {console.log(err); enableChanges()}
-                );
-            loadMidi(urlMidi);
+        success: ((xmldata : XMLDocument) => {loadMusicXMLandMidi_callback(xmldata, urlMidi)}),
             // loadMidiToPiano(urlMidi);
-        }
     });
 };
 
@@ -336,7 +351,7 @@ let loadSamplesButton = new Nexus.TextButton('#load-samples-button',{
     'text': 'Load samples',
     'alternateText': 'Samples loading'
 })
-
+loadSamplesButton.textElement.style.fontSize = '15px';
 let sampledInstruments;  // declare variables but do not load samples yet
 let sampled_instruments_names = ['organ', 'harmonium', 'xylophone'];
 loadSamplesButton.on('change', () => {
@@ -471,7 +486,8 @@ bpmCounter.link(bpmSlider);
 
 bpmSlider.value = 110
 
-let midiOutput;  // declare midiOut stub variable
+let midiOutput = WebMidi.outputs[0];  // declare midiOut stub variable
+
 
 function playNote(time, event){
     let timingOffset = performance.now() - Tone.now() * 1000
@@ -481,9 +497,9 @@ function playNote(time, event){
     // console.log(time)
     // console.log(time * 1000 + timingOffset)
     // console.log(event.name)
-    midiOutput.playNote(event.name, 1,
+    WebMidi.enable(function() { midiOutput.playNote(event.name, 1,
         {time: time * 1000 + timingOffset,
-         duration: event.duration * 1000})
+         duration: event.duration * 1000}) });
 }
 
 function playNoteChordsInstrument(time, event){
@@ -498,16 +514,25 @@ function nowPlayingCallback(time, step){
 
 // quarter-note aligned steps
 let sequence_duration_tone: Tone.Time;
-if (osmd.leadsheet) {sequence_duration_tone = Tone.Time('8m')}  // FIXME hardcoded piece duration
-else {sequence_duration_tone = Tone.Time('4m')}
-// FIXME could break, should really parse tone js duration
-let [seq_dur_measures, seq_dur_quarters, seq_dur_sixteenths] =
-    sequence_duration_tone.toBarsBeatsSixteenths().split(':').map(parseFloat)
-let sequence_duration_quarters = Math.floor((4*seq_dur_measures +
-    seq_dur_quarters + Math.floor(seq_dur_sixteenths / 4)))
+let [seq_dur_measures, seq_dur_quarters, seq_dur_sixteenths] = [0, 0, 0];
+let sequence_duration_quarters = 0
 let steps = [];
-for (let i = 0; i < sequence_duration_quarters; i++) {
-    steps.push(i);
+let seq_duration = 0;
+
+function set_tone_time_parameters() {
+    steps = []
+    seq_duration = osmd.sequenceDuration();
+    sequence_duration_tone = Tone.Time(`${seq_duration / 4}m`)
+    // if (osmd.leadsheet) {sequence_duration_tone = Tone.Time('8m')}  // FIXME hardcoded piece duration
+    // else {sequence_duration_tone = Tone.Time('4m')}
+    // FIXME could break, should really parse tone js duration
+    let [seq_dur_measures, seq_dur_quarters, seq_dur_sixteenths] =
+        sequence_duration_tone.toBarsBeatsSixteenths().split(':').map(parseFloat)
+    sequence_duration_quarters = Math.floor((4*seq_dur_measures +
+        seq_dur_quarters + Math.floor(seq_dur_sixteenths / 4)))
+    for (let i = 0; i < sequence_duration_quarters; i++) {
+        steps.push(i);
+    }
 }
 
 function scheduleTrackToInstrument(midiTrack, isChords=false) {
@@ -625,6 +650,18 @@ WebMidi.enable(function (err) {
     midiOutSelect.on('change', midiOutOnChange.bind(midiOutSelect));
 });
 
-import { createWavInput } from './file_upload'
-createWavInput(() => loadMusicXMLandMidi(serverUrl + 'get-musicxml',
-  serverUrl + 'get-midi'))
+let urlAnalyze = serverUrl + 'analyze-audio';
+
+// $.when($.post({  url: serverUrl + 'get-metadata',
+//                 data: JSON.stringify(getMetadata()),
+//                 contentType: 'application/json',
+//                 dataType: 'xml'))
+//   .then (
+createWavInput(urlAnalyze, (xmldata : XMLDocument) => {loadMusicXMLandMidi_callback(xmldata, serverUrl + 'get-midi')
+                                                          playbutton.flip(false);
+                                                          Tone.Transport.stop();
+                                                          nowPlayingCallback(0, 0);});
+Initialize_record((data : XMLDocument) => {loadMusicXMLandMidi_callback(data, serverUrl + 'get-midi')
+                                                          playbutton.flip(false);
+                                                          Tone.Transport.stop();
+                                                          nowPlayingCallback(0, 0);});
