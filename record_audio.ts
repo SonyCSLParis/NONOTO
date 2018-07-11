@@ -5,12 +5,9 @@ import * as Tone from "tone";
 
 
 function metronome(opts) {
-    //primary variables
     var l = typeof opts.len !== "undefined" ? opts.len : 200, // length of metronome arm
         r = typeof opts.angle !== "undefined" ? opts.angle : 20, //max angle from upright
     	   w = 2 * l * Math.cos(r),
-        // tick_func = typeof opts.tick !== "undefined" ? opts.tick : function() {}, //function to call with each tick
-        // end_func = typeof opts.complete !== "undefined" ? opts.complete : function() {}, //function to call on completion
         playSound = typeof opts.sound !== "undefined" ? opts.sound : true;
 
 	// initialize Raphael paper if need be
@@ -21,14 +18,12 @@ function metronome(opts) {
 
 	// initialize audio if need be
     if (playSound && opts.audio) {
-		// initialize audio
 		var sound: HTMLMediaElement = document.createElement('audio');
 		sound.setAttribute('src', opts.audio);
 		sound.id = 'tick';
 		document.body.appendChild(sound);
     }
 
-    // derivative variables
     var y0 = l * Math.cos(Math.PI * r / 180),
         x0 = l * Math.sin(Math.PI * r / 180),
         y = l + 10,
@@ -61,36 +56,14 @@ function metronome(opts) {
     });
 
     var mn = opts.paper.set(arm, weight);
-
     Raphael.easing_formulas.sinoid = function(n) { return Math.sin(Math.PI * n / 2) };
 
-    // function tick(obj, repeats) {
-    //         //Raphael summons the callback on each of the three objects in the set, so we
-    //         //have to only call the sound once per iteration by associating it with one of the objects.
-    //         //doesn't matter which one
-    //         if (obj.data("id") === "arm") {
-    //             tick_count += 1;
-    //             // if (playSound) {
-    //             //     document.getElementById("tick").play();
-    //             // }
-    //             // tick_func(tick_count);
-    //             if (tick_count >= repeats) {
-    //                 mn.attr("transform", "R0 " + x + "," + y);
-    //                 // end_func();
-    //             }
-    //         }
-    // }
 return {
     start: function(tempo, repeats) {
                 tick_count = 0;
                 mn.attr("transform", "R-20 " + x + "," + y);
-
-                //2 iterations per animation * 60000 ms per minute / tempo
                 var interval = 120000 / tempo;
 
-    		 // function animationDone() {
-    			// 	tick(this, repeats);
-    			// };
          var ticktockAnimationParam = {
             "50%": { transform:"R20 " + x + "," + y, easing: "sinoid", callback: () => {if (playSound) {
                             sound.play();}}},
@@ -105,7 +78,6 @@ return {
     stop: function() {
                 mn.stop();
                 mn.attr("transform", "R0 " + x + "," + y);
-                // end_func();
         },
     shapes: function() {
       return {
@@ -116,41 +88,6 @@ return {
       }
     }
   };
-
-            	// $("<div />", {
-            	// 	html: 	"<span>tempo: </span>" +
-            	// 			"<input class='metr_input' type='text' id='tempo' value='100' />" +
-    					// 	"<span>ticks: </span>" +
-    					// 	"<input class='metr_input' type='text' id='ticks' value='8' />" +
-    					// 	"<button id='startstop'>start</button>" +
-    					// 	"<div id='count'>0</div>"
-            	// }).appendTo(el);
-
-    		// $('#startRecord').click(function() {
-    			// start animation
-    			// if ($(this).html() === "start") {
-    			// 	$(this).html("stop");
-
-    				//get values for tempo and ticks and restrict
-    				// var tempo = parseInt(bpm, 10);
-    				// if (!tempo) { tempo = 60; }
-    				// else if (tempo > 200) { tempo = 200; }
-    				// else if (tempo < 30) { tempo = 30; }
-    				// $("#tempo").val(tempo);
-            //
-    				// var ticks = parseInt($('#ticks').val(), 10);
-    				// if (!ticks) { ticks = 20; }
-    				// else if (ticks > 60) { ticks = 60; }
-    				// else if (ticks < 8) { ticks = 8; }
-    				// $("#ticks").val(ticks);
-
-    			// 	m.start(tempo, ticks);
-    			// } else {
-    			// 	$(this).html("start");
-    			// 	m.stop();
-    // 			}
-    // 		});
-    // }
 }
 
 let serverConfig: object = require('./config.json');
@@ -206,10 +143,9 @@ export function Initialize_record(onSuccess) {
         'max': 130,
         'step': 1
     });
-
     bpmCounterRecord.link(bpmSliderRecord);
-
     bpmSliderRecord.value = 110;
+
     let m = metronome({
         len: 200,
         angle: 20,
