@@ -136,7 +136,7 @@ osmdContainer.classList.add('osmd-container')
  * ... and attach it to our HTML document's body. The document itself is a HTML5
  * stub created by Webpack, so you won't find any actual .html sources.
  */
-osmdContainer.style.margin = '0 0 0 75px'
+osmdContainer.style.margin = '250px 0 0 75px'
 document.body.appendChild(osmdContainer);
 /*
  * Create a new instance of OpenSheetMusicDisplay and tell it to draw inside
@@ -479,8 +479,9 @@ let bpmCounter = new Nexus.Number('#bpm-counter', {
     'max': 130,
     'step': 1
 });
+
 bpmSlider.on('change', function(value){
-    Tone.Transport.bpm.value = value
+    Tone.Transport.bpm.value = value;
 });
 bpmCounter.link(bpmSlider);
 
