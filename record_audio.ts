@@ -93,11 +93,9 @@ return {
 let serverConfig: object = require('./config.json');
 
 // let serverUrl = `http://${serverConfig['server_ip']}:${serverConfig['chorale_port']}/`;
-let serverUrl = 'http://localhost:5001/';
 
 
-
-export function Initialize_record(onSuccess) {
+export function Initialize_record(onSuccess, serverUrl) {
     try {
         // window.AudioContext = window.AudioContext || window.webkitAudioContext;
         // navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
@@ -189,7 +187,7 @@ export function Initialize_record(onSuccess) {
                                               var data = new FormData();
                                               data.append('record', AudioBLOB, 'audio.wav');
                                               $.ajax({
-                                                url :  serverUrl + 'analyze-audio',
+                                                url :  serverUrl + 'analyze-audio' + `?tempo=${bpmSliderRecord.value}`,
                                                 type: 'POST',
                                                 data: data,
                                                 contentType: false,

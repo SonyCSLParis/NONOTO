@@ -72,44 +72,30 @@ export function make_voices_lockets() {
       })
       set_font_size(bass_button, '12px');
 
-      soprano_button.on('change', (e) => { if (soprano_button.state) {
-                                      UrlTimerangeChange = 'timerange-change-soprano-locked';
+      function get_locked_voices() {
+        UrlTimerangeChange = 'timerange-change' +
+                                `?sopranoLocked=${soprano_button.state}` +
+                                `&altoLocked=${alto_button.state}` +
+                                `&tenorLocked=${tenor_button.state}` +
+                                `&bassLocked=${bass_button.state}`;
+
+      };
+      get_locked_voices();
+      soprano_button.on('change', (e) => get_locked_voices());
+
+      alto_button.on('change', (e) => get_locked_voices());
+
+      tenor_button.on('change', (e) => get_locked_voices());
+
+      bass_button.on('change', (e) => get_locked_voices());
+
+      no_voice_button.on('change', (e) => {
+                                      soprano_button.flip(false);
                                       alto_button.flip(false);
                                       tenor_button.flip(false);
                                       bass_button.flip(false);
-                                      no_voice_button.flip(false);}});
-
-
-      alto_button.on('change', (e) => { if (alto_button.state) {
-                                      UrlTimerangeChange = 'timerange-change-alto-locked';
-                                      soprano_button.flip(false);
-                                      tenor_button.flip(false);
-                                      bass_button.flip(false);
-                                      no_voice_button.flip(false);}});
-
-
-      tenor_button.on('change', (e) => { if (tenor_button.state) {
-                                      UrlTimerangeChange = 'timerange-change-tenor-locked';
-                                      soprano_button.flip(false);
-                                      alto_button.flip(false);
-                                      bass_button.flip(false);
-                                      no_voice_button.flip(false);}});
-
-
-      bass_button.on('change', (e) => { if (bass_button.state) {
-                                      UrlTimerangeChange = 'timerange-change-bass-locked';
-                                      soprano_button.flip(false);
-                                      alto_button.flip(false);
-                                      tenor_button.flip(false);
-                                      no_voice_button.flip(false);}});
-
-
-      no_voice_button.on('change', (e) => { if (no_voice_button.state) {
-                                      UrlTimerangeChange = 'timerange-change';
-                                      soprano_button.flip(false);
-                                      alto_button.flip(false);
-                                      tenor_button.flip(false);
-                                      bass_button.flip(false);}});
+                                      (e) => get_locked_voices();
+                                    });
 }
 
 export {UrlTimerangeChange};

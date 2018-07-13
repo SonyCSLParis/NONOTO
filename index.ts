@@ -107,11 +107,13 @@ granularitySelect.selectedIndex = initialGranulatity
 
 let titlediv: HTMLDivElement = document.createElement('div')
 // titlediv.classList.add('header')
+titlediv.style.position = 'relative'
+titlediv.style.top = '90px'
 titlediv.textContent = 'DeepBach'
-titlediv.style.alignContent = 'CenterTop'
+titlediv.style.textAlign = 'center'
 titlediv.style.width = '100%'
 titlediv.style.fontStyle = 'bold'
-titlediv.style.fontSize = '64px'
+titlediv.style.fontSize = '90px'
 document.body.appendChild(titlediv);
 // document.body.appendChild(document.createElement("div"))
 
@@ -136,7 +138,9 @@ osmdContainer.classList.add('osmd-container')
  * ... and attach it to our HTML document's body. The document itself is a HTML5
  * stub created by Webpack, so you won't find any actual .html sources.
  */
-osmdContainer.style.margin = '250px 0 0 75px'
+osmdContainer.style.position = 'relative'
+osmdContainer.style.top = '-10px'
+osmdContainer.style.margin = '150px 0 0 75px'
 document.body.appendChild(osmdContainer);
 /*
  * Create a new instance of OpenSheetMusicDisplay and tell it to draw inside
@@ -230,9 +234,9 @@ function onClickTimestampBoxFactory(timeStart: Fraction, timeEnd: Fraction) {
     // k = k + 1;
     const  [quarternoteStart, quarternoteEnd] = ([timeStart, timeEnd].map(
         timeFrac => Math.round(4 * timeFrac.RealValue)))
-
-    const argsGenerationUrl = `?quarternoteStart=${quarternoteStart}` +
-        `&quarternoteEnd=${quarternoteEnd}`;
+        // UrlTimerangeChange already contains locked voice arguments
+    const argsGenerationUrl = `&quarterNoteStart=${quarternoteStart}` +
+        `&quarterNoteEnd=${quarternoteEnd}`;
     const argsMidiUrl = "get-midi";
     return (function (this, event) {
       console.log(UrlTimerangeChange)
@@ -665,4 +669,4 @@ createWavInput(urlAnalyze, (xmldata : XMLDocument) => {loadMusicXMLandMidi_callb
 Initialize_record((data : XMLDocument) => {loadMusicXMLandMidi_callback(data, serverUrl + 'get-midi')
                                                           playbutton.flip(false);
                                                           Tone.Transport.stop();
-                                                          nowPlayingCallback(0, 0);});
+                                                          nowPlayingCallback(0, 0);}, serverUrl);
