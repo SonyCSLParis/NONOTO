@@ -78,6 +78,8 @@ module.exports = function (options) {
         }),
 	//example on how to add ressources
       new CopyWebpackPlugin([
+          {from: './js/justindomingue-ohSnap-3ef7eb5/ohsnap.min.js',
+           to: 'js/ohsnap.min.js'},
           {from: './tonejs-instruments/samples/organ',
            to: 'tonejs-instruments/samples/organ'},
           {from: './tonejs-instruments/samples/harmonium',
