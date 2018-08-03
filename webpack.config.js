@@ -84,13 +84,14 @@ module.exports = function (options) {
       {from: './tonejs-instruments/samples/harmonium',
        to: 'tonejs-instruments/samples/harmonium'},
       {from: './tonejs-instruments/samples/xylophone',
-       to: 'tonejs-instruments/samples/xylophone'}
+       to: 'tonejs-instruments/samples/xylophone'},
       ])
     ],
 
     node: {
       global: true,
       crypto: 'empty',
+      fs: 'empty',
       process: true,
       module: false,
       clearImmediate: false,

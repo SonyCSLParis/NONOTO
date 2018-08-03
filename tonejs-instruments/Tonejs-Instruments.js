@@ -4,15 +4,15 @@
 * @author N.P. Brosowsky (nbrosowsky@gmail.com)
 * https://github.com/nbrosowsky/tonejs-instruments
 */
-
+import * as $ from "jquery";
 import * as Tone from "tone";
-
+import {voice_samples} from '../index'
 
 export var SampleLibrary = {
     minify: false,
     ext: '.[mp3|ogg]', // use setExt to change the extensions on all files // do not change this variable //
     baseUrl: '/samples/',
-    list: ['bass-electric','bassoon','cello','clarinet','contrabass','flute','french-horn','guitar-acoustic','guitar-electric','harmonium','harp','organ','piano','saxophone','trombone','trumpet','tuba','violin','xylophone'],
+    list: ['bass-electric','bassoon','cello','clarinet','contrabass','flute','french-horn','guitar-acoustic','guitar-electric','harmonium','harp','organ','piano','saxophone','trombone','trumpet','tuba','violin','xylophone','voice'],
 
     setExt: function (newExt) {
         var i
@@ -21,7 +21,6 @@ export var SampleLibrary = {
 
                 this[this.list[i]][property] = this[this.list[i]][property].replace(this.ext, newExt)
             }
-
 
         }
         this.ext = newExt;
@@ -43,11 +42,14 @@ export var SampleLibrary = {
         }
 
         rt = {};
-
         // if an array of instruments is passed...
         if (Array.isArray(t.instruments)) {
             for (i = 0; i <= t.instruments.length - 1; i++) {
                 var newT = this[t.instruments[i]];
+                if (t.instruments[i] === 'voice') {
+                  newT = voice_samples
+                }
+                console.log(newT)
                 //Minimize the number of samples to load
                 if (this.minify === true || t.minify === true) {
                     var minBy = 1;
@@ -62,6 +64,7 @@ export var SampleLibrary = {
                     }
 
                     var filtered = Object.keys(newT).filter(function (_, i) {
+
                         return i % minBy != 0;
                     })
                     filtered.forEach(function (f) {
@@ -69,16 +72,12 @@ export var SampleLibrary = {
                     })
 
                 }
-
-
-
-
                 rt[t.instruments[i]] = new Tone.Sampler(
                     newT, {
                         baseUrl: t.baseUrl + t.instruments[i] + "/"
                     }
-
                 )
+                console.log(rt)
             }
 
             return rt
@@ -107,10 +106,6 @@ export var SampleLibrary = {
                     delete newT[f]
                 })
             }
-
-
-
-
             var s = new Tone.Sampler(
                 newT, {
                     baseUrl: t.baseUrl + t.instruments + "/"
@@ -617,8 +612,7 @@ export var SampleLibrary = {
         'C4': 'C4.[mp3|ogg]',
         'C5': 'C5.[mp3|ogg]',
         'C6': 'C6.[mp3|ogg]'
+    },
 
-    }
-
-
+    'voice': voice_samples
 }

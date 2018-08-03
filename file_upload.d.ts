@@ -1,1 +1,1 @@
-export declare function createWavInput(urlAnalyze: any, onSuccess: Function): void;
+export declare function createWavInput(urlLoadfile: any, onSuccess: Function): void;

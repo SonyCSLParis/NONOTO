@@ -20,16 +20,37 @@ div[nexus-ui] select, div[nexus-ui] input {
     // grid-template-rows: 100px;
 }
 
+#soprano_locked {
+    grid-area: areaSoprano
+}
+
+#alto_locked {
+    grid-area: areaAlto
+}
+
+#tenor_locked {
+    grid-area: areaTenor
+}
+
+#bass_locked {
+    grid-area: areaBass
+}
+
 #voice-controls {
     position: absolute;
     top: 390px;
     left: 10px;
     display: grid;
-    grid-template-rows: repeat(5, 1fr);
+    grid-template-areas: '. .'
+                         'areaSoprano areaSoprano'
+                         'areaAlto areaAlto'
+                         'areaTenor areaTenor'
+                         'areaBass areaBass';
+    grid-column-gap: 5px;
     grid-row-gap: 60px;
 }
 
-#metronome_container {
+#metronome-container {
     position: absolute;
     top: 8px;
     right: 50px;
@@ -37,6 +58,16 @@ div[nexus-ui] select, div[nexus-ui] input {
 	height: 300px;
 	padding-top: 50px;
 
+}
+
+#simple-upload {
+    position: absolute;
+    top: 23px;
+    right: 200px;
+}
+
+.hide {
+    visibility: hidden;
 }
 //
 // #play-button {

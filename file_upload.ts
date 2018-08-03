@@ -5,8 +5,7 @@ require('jquery-simple-upload');
 // let serverUrl = 'http://localhost:5001/'
 
 let useFineUpload: boolean = false;
-export function createWavInput(urlAnalyze, onSuccess: Function): void {
-  let generateArgs: string = urlAnalyze;
+export function createWavInput(urlLoadfile, onSuccess: Function): void {
   if (useFineUpload) {
       import('fine-uploader')
       .then(qq => {
@@ -29,18 +28,18 @@ export function createWavInput(urlAnalyze, onSuccess: Function): void {
   }
   else {
       let simpleUpload: HTMLDivElement = document.createElement('div')
+      simpleUpload.id = 'simple-upload'
       document.body.appendChild(simpleUpload);
       let simpleUpload_html: string =
           `<div id="filename"></div>
           <div id="progress"></div>
           <div id="progressBar"></div>
-          <label for="wav-input">Select a .wav file to upload</label>
           <input type="file" name="upload" accept="audio/x-wav" id="wav-input"/>`
 
       simpleUpload.innerHTML = simpleUpload_html;
 
       $('#wav-input').change(function() {
-          ($(this) as any).simpleUpload(urlAnalyze, {
+          ($(this) as any).simpleUpload(urlLoadfile, {
               start: function(file){
         				//upload started
         				$('#filename').html(file.name);

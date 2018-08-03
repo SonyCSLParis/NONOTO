@@ -92,7 +92,6 @@ export class eOSMD extends OpenSheetMusicDisplay {
         commonDiv.style.height = this.computePositionZoom(height, 0) + 'px';
         commonDiv.style.left = this.computePositionZoom(x, 1) + 'px';
         commonDiv.style.width = this.computePositionZoom(width) + 'px';
-
         if (commonDiv.id !== commonDivId) {
             // the div has no ID set yet: was created in this call
             commonDiv.id = commonDivId;
@@ -142,7 +141,6 @@ export class eOSMD extends OpenSheetMusicDisplay {
             // inner.appendChild(commonStep);
             commonStep.appendChild(commonDiv);
             commonDiv.appendChild(div);
-
             if (!this.leadsheet && divClass === 'quarter-note') {  // FIXME hardcoded quarter-note duration
                 // add fermata selection box
                 this._fermatas.push(new FermataBox(commonDiv, this.sequenceDuration()));
@@ -273,7 +271,6 @@ export class eOSMD extends OpenSheetMusicDisplay {
 
             let duration = sourceMeasure.Duration
         }
-
         // Reset all boxes to avoid bugs when sequenceDuration diminishes
         if (k > 1) {
           let previousStep = k - 1;

@@ -1,8 +1,10 @@
-import * as Recorder from 'Recorderjs';
+import * as Recorder from 'recorderjs';
 import * as Nexus from 'nexusui';
 import * as Raphael from 'raphael';
 import * as Tone from "tone";
 
+import './styles/osmd.scss'
+import './styles/main.scss'
 
 function metronome(opts) {
     var l = typeof opts.len !== "undefined" ? opts.len : 200, // length of metronome arm
@@ -95,7 +97,7 @@ let serverConfig: object = require('./config.json');
 // let serverUrl = `http://${serverConfig['server_ip']}:${serverConfig['chorale_port']}/`;
 
 
-export function Initialize_record(onSuccess, serverUrl) {
+export function Initialize_record(urlLoadfile, onSuccess) {
     try {
         // window.AudioContext = window.AudioContext || window.webkitAudioContext;
         // navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
@@ -116,7 +118,7 @@ export function Initialize_record(onSuccess, serverUrl) {
     // recordContainer.id = 'voice-controls';
     // document.body.appendChild(recordContainer);
     let metronome_container: HTMLElement = document.createElement('div');
-    metronome_container.id = 'metronome_container';
+    metronome_container.id = 'metronome-container';
     document.body.appendChild(metronome_container);
 
     let bpmSliderRecordElem: HTMLElement = document.createElement('div');
@@ -147,7 +149,7 @@ export function Initialize_record(onSuccess, serverUrl) {
     let m = metronome({
         len: 200,
         angle: 20,
-        paper: "metronome_container",
+        paper: "metronome-container",
         audio: "https://github.com/wilson428/metronome/blob/master/tick.wav?raw=true"
     });
     m.shapes().outline.attr("fill", "#0962ba");
@@ -181,21 +183,18 @@ export function Initialize_record(onSuccess, serverUrl) {
                                         else {
                                           m.stop();
                                           var _AudioFormat = "audio/wav";
-                                          stopRecording( function(AudioBLOB) {
+                                          stopRecording(function(AudioBLOB) {
                                               // callback for exportWAV
                                               console.log(AudioBLOB);
-                                              var data = new FormData();
-                                              data.append('record', AudioBLOB, 'audio.wav');
+                                              var audio_data = new FormData();
+                                              audio_data.append('record', AudioBLOB, 'audio.wav');
                                               $.ajax({
-                                                url :  serverUrl + 'analyze-audio' + `?tempo=${bpmSliderRecord.value}`,
+                                                url :  urlLoadfile,
                                                 type: 'POST',
-                                                data: data,
+                                                data: audio_data,
                                                 contentType: false,
                                                 processData: false,
-                                                success: onSuccess,
-                                                // error: function() {
-                                                //   alert("not so boa!");
-                                                // }
+                                                success: onSuccess(bpmSliderRecord.value),
                                               });
                                           }, _AudioFormat);
                                         }

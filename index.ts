@@ -6,12 +6,13 @@ import * as WebMidi from 'webmidi'
 import * as MidiConvert from "midiconvert";
 import {Piano} from 'tone-piano';
 import * as Tone from "tone";
-import { SampleLibrary } from './tonejs-instruments/Tonejs-Instruments'
+import { SampleLibrary, set_samples } from './tonejs-instruments/Tonejs-Instruments'
 import * as Nexus from 'nexusui'
 import {ChordSelector} from './chord_selector';
 import {make_voices_lockets} from './unlock_voices'
 import { createWavInput } from './file_upload';
 import {Initialize_record} from './record_audio';
+import {Initialize_canvas} from './drawing_stave'
 
 import './styles/osmd.scss'
 import './styles/main.scss'
@@ -125,6 +126,7 @@ if (useLeadsheetMode) {
     serverPort = server_config['chorale_port']
 }
 let serverUrl = 'http://localhost:5001/'
+
 // let urlMidi = serverUrl + 'get-midi'
 // let serverUrl = `http://${server_config['server_ip']}:${serverPort}/`;
 let osmd: eOSMD;
@@ -148,7 +150,6 @@ document.body.appendChild(osmdContainer);
  * not to redraw on resize.
  */
 osmd = new eOSMD(osmdContainer, true, useLeadsheetMode);
-
 // var options = {
 //     zone: osmd.renderingBackend.getInnerElement(),
 //     color: "blue"
@@ -279,23 +280,19 @@ function enableChanges(): void {
 }
 
 function loadMusicXMLandMidi_callback (xmldata: XMLDocument, urlMidi: string) {
-  try{
     removeMusicXMLHeaderNodes(xmldata);
-  }
-  catch(e){
-    console.log('No sound input detected');
-  }
     osmd.load(xmldata)
         .then(
             () => {
-                stepBox = stepBox + 1
-                osmd.rendering(onClickTimestampBoxFactory, stepBox);
-                set_tone_time_parameters();
-                enableChanges();
-                loadMidi(urlMidi);
-            },
+                  stepBox = stepBox + 1;
+                  osmd.rendering(onClickTimestampBoxFactory, stepBox);
+                  set_tone_time_parameters();
+                  enableChanges();
+                  loadMidi(urlMidi);
+                  },
             (err) => {console.log(err); enableChanges();}
         );
+
     // loadMidiToPiano(urlMidi);
 }
 
@@ -344,6 +341,8 @@ let steelpan = new Tone.PolySynth(12).set({
 );
 steelpan.connect(reverb);
 
+export var voice_samples = {}
+
 // Manual samples loading button, to reduce network usage
 let loadSamplesButtonElem: HTMLDivElement = document.createElement('div')
 loadSamplesButtonElem.id = 'load-samples-button'
@@ -355,44 +354,56 @@ let loadSamplesButton = new Nexus.TextButton('#load-samples-button',{
     'text': 'Load samples',
     'alternateText': 'Samples loading'
 })
+
 loadSamplesButton.textElement.style.fontSize = '15px';
-let sampledInstruments;  // declare variables but do not load samples yet
+let sampledInstruments = {};  // declare variables but do not load samples yet
 let sampled_instruments_names = ['organ', 'harmonium', 'xylophone'];
+let sampled_instruments_url = "tonejs-instruments/samples/"
+
+function loadSamplesCallback () {
+  // must disable pointer events on *child* node to also use cursor property
+  (loadSamplesButtonElem.firstElementChild as HTMLElement).style.pointerEvents = 'none';
+  loadSamplesButtonElem.style.cursor = 'wait';
+  let loadPromises: Promise<any>[] = []
+  let sampleLibraryLoadPromise = new Promise((resolve, reject) => {
+      sampledInstruments = SampleLibrary.load({
+                  instruments: sampled_instruments_names,
+                  baseUrl: sampled_instruments_url
+              });
+      Object.keys(sampledInstruments).forEach(function(instrument_name) {
+          sampledInstruments[instrument_name].release = 1.8;
+          sampledInstruments[instrument_name].toMaster();
+      });
+      resolve(sampledInstruments);
+  });
+  loadPromises.push(sampleLibraryLoadPromise)
+  // Don't load piano samples 2 times : 'organ' is always load with piano
+  let pianoLoadPromise: Promise<boolean> = piano.load()
+  loadPromises.push(pianoLoadPromise)
+
+  Promise.all(loadPromises).then(()=>{
+      (loadSamplesButtonElem.firstElementChild as HTMLElement).style.pointerEvents = 'auto';
+      loadSamplesButton.turnOff();
+      loadSamplesButtonElem.style.cursor = 'auto';
+      loadSamplesButtonElem.classList.add('hide');
+      console.log('Finished downloading!');
+      // loadSamplesButtonElem.remove();
+      instrumentSelect.render();
+  });
+}
+
 loadSamplesButton.on('change', () => {
-    // must disable pointer events on *child* node to also use cursor property
-    (loadSamplesButtonElem.firstElementChild as HTMLElement).style.pointerEvents = 'none';
-    loadSamplesButtonElem.style.cursor = 'wait';
-
-    let loadPromises: Promise<any>[] = []
-    let sampleLibraryLoadPromise = new Promise((resolve, reject) => {
-        sampledInstruments = SampleLibrary.load({
-                    instruments: sampled_instruments_names,
-                    baseUrl: "tonejs-instruments/samples/"
-                });
-        Object.keys(sampledInstruments).forEach(function(instrument_name) {
-            sampledInstruments[instrument_name].release = 1.8;
-            sampledInstruments[instrument_name].toMaster();
-        });
-        resolve(sampledInstruments);
-    });
-    loadPromises.push(sampleLibraryLoadPromise)
-
-    let pianoLoadPromise: Promise<boolean> = piano.load()
-    loadPromises.push(pianoLoadPromise)
-
-    Promise.all(loadPromises).then(()=>{
-        console.log('Finished downloading!')
-        loadSamplesButtonElem.remove();
-        instrumentSelect.render();
-    });
-});
+  if (loadSamplesButton.state) {
+  loadSamplesCallback();
+  }
+ });
 
 function addTriggerAttackRelease_(piano: Piano) {
     // add dummy Instrument method for simple duck typing
     piano.triggerAttackRelease = () => {return piano};
     return piano;
 }
-addTriggerAttackRelease_(piano)
+addTriggerAttackRelease_(piano);
 
 let instrumentFactories = {
     'PolySynth': () => {return polysynth},
@@ -402,6 +413,7 @@ let instrumentFactories = {
         () => {piano.disconnect(0); piano.connect(reverb); return piano},
     'Xylophone': () => {return sampledInstruments['xylophone']},
     'Steelpan': () => {return steelpan},
+    'Voice': () => {return sampledInstruments['voice']}
 }
 
 let instrumentSelectElem: HTMLElement = document.createElement('div')
@@ -589,30 +601,32 @@ function loadMidi(url: string) {
         Tone.Transport.cancel()  // remove all scheduled events
 
         // must set the Transport BPM to that of the midi for proper scheduling
-        Tone.Transport.bpm.value = midi.header.bpm;
-        Tone.Transport.timeSignature = midi.header.timeSignature;
+        if (midi) {
+            Tone.Transport.bpm.value = midi.header.bpm;
+            Tone.Transport.timeSignature = midi.header.timeSignature;
 
-        let drawCallback = (time, step) => {
-                // DOM modifying callback should be put in Tone.Draw scheduler!
-                // see: https://github.com/Tonejs/Tone.js/wiki/Performance#syncing-visuals
-                Tone.Draw.schedule((time) => {nowPlayingCallback(time, step)}, time);
+            let drawCallback = (time, step) => {
+                    // DOM modifying callback should be put in Tone.Draw scheduler!
+                    // see: https://github.com/Tonejs/Tone.js/wiki/Performance#syncing-visuals
+                    Tone.Draw.schedule((time) => {nowPlayingCallback(time, step)}, time);
+                    }
+
+            // schedule quarter-notes clock
+            new Tone.Sequence(drawCallback, steps, '4n').start(0);
+
+            if (!osmd.leadsheet) {
+                for (let track of midi.tracks) {
+                    scheduleTrackToInstrument(track);
                 }
-
-        // schedule quarter-notes clock
-        new Tone.Sequence(drawCallback, steps, '4n').start(0);
-
-        if (!osmd.leadsheet) {
-            for (let track of midi.tracks) {
-                scheduleTrackToInstrument(track);
             }
-        }
-        else {
-            scheduleTrackToInstrument(midi.tracks[0]);
-            scheduleTrackToInstrument(midi.tracks[1], true);
-        }
+            else {
+                scheduleTrackToInstrument(midi.tracks[0]);
+                scheduleTrackToInstrument(midi.tracks[1], true);
+            }
 
-        // change Transport BPM back to the displayed value
-        Tone.Transport.bpm.value = bpmSlider.value;
+            // change Transport BPM back to the displayed value
+            Tone.Transport.bpm.value = bpmSlider.value;
+      }
     })
 }
 
@@ -655,18 +669,58 @@ WebMidi.enable(function (err) {
     midiOutSelect.on('change', midiOutOnChange.bind(midiOutSelect));
 });
 
-let urlAnalyze = serverUrl + 'analyze-audio';
+let urlLoadfile = serverUrl + 'load-audio-file';
 
-// $.when($.post({  url: serverUrl + 'get-metadata',
-//                 data: JSON.stringify(getMetadata()),
-//                 contentType: 'application/json',
-//                 dataType: 'xml'))
-//   .then (
-createWavInput(urlAnalyze, (xmldata : XMLDocument) => {loadMusicXMLandMidi_callback(xmldata, serverUrl + 'get-midi')
-                                                          playbutton.flip(false);
-                                                          Tone.Transport.stop();
-                                                          nowPlayingCallback(0, 0);});
-Initialize_record((data : XMLDocument) => {loadMusicXMLandMidi_callback(data, serverUrl + 'get-midi')
-                                                          playbutton.flip(false);
-                                                          Tone.Transport.stop();
-                                                          nowPlayingCallback(0, 0);}, serverUrl);
+function load_chorale(xmldata : XMLDocument) {
+      loadMusicXMLandMidi_callback(xmldata, serverUrl + 'get-midi');
+      playbutton.flip(false);
+      make_voices_lockets(true);
+      Tone.Transport.stop();
+      nowPlayingCallback(0, 0);
+      }
+
+function compute_chorale_from_audio_part (url_analyse: string, audio_file_name: string) {
+        $.ajax({
+          url: url_analyse,
+          type: 'GET',
+          contentType: false,
+          processData: false,
+          success: load_chorale
+              })
+        }
+
+createWavInput(urlLoadfile, (audio_file_name: string) =>
+                  compute_chorale_from_audio_part(serverUrl + 'analyze-audio' + `?filename=${audio_file_name}`, audio_file_name));
+
+
+Initialize_record(urlLoadfile, function(tempo_record: number) {
+    return function (audio_file_name: string) {
+      $.ajax({
+        url: serverUrl + 'get-samples-dict' + `?filename=${audio_file_name}`,
+        type: 'GET',
+        contentType: false,
+        processData: false,
+        success: function(data) {
+                  let sampledVoice;
+                  if (data) {
+                    voice_samples = data;
+                    console.log(voice_samples);
+                    sampledVoice = SampleLibrary.load({
+                              instruments: ['voice'],
+                              baseUrl: serverUrl + 'samples/'
+                            });
+                          };
+                  Object.assign(sampledInstruments, {['voice'] : sampledVoice['voice']});
+                  sampledInstruments['voice'].release = 1.8;
+                  sampledInstruments['voice'].toMaster();
+                  compute_chorale_from_audio_part(serverUrl + 'analyze-audio' + `?filename=${audio_file_name}` + `&tempo=${tempo_record}`, audio_file_name);
+                }
+           });
+    }
+  });
+
+Initialize_canvas();
+
+
+export {serverUrl};
+export {load_chorale};
