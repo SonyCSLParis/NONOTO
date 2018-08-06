@@ -152,9 +152,28 @@ export class eOSMD extends OpenSheetMusicDisplay {
             }
         }
         else {
+          // boxes already constructed at previous step
           commonStep.appendChild(commonDiv);
           commonDiv.appendChild(div);
+          if (!this.leadsheet && divClass === 'quarter-note') {
+          // reinit all previous fermata boxes to avoid bugs
+              let fermata_container = document.getElementById(commonDiv.id + '-FermataBox');
+              // preserve 'active' class of fermata box set by users
+              if (!fermata_container.classList.contains('imposed') && fermata_container.classList.contains('active')) {
+                commonDiv.removeChild(fermata_container);
+                let new_fermata = new FermataBox(commonDiv, this.sequenceDuration())
+                new_fermata.container.classList.add('active')
+                this._fermatas.push(new_fermata);
+              }
+              else {
+                commonDiv.removeChild(fermata_container);
+                this._fermatas.push(new FermataBox(commonDiv, this.sequenceDuration()));
+              }
+          }
+
+
         }
+
 
         return div;
     };
@@ -265,6 +284,7 @@ export class eOSMD extends OpenSheetMusicDisplay {
                             `${granularityName}-${measureIndex}-${timestampIndex}$`,
                             onclick,
                             [leftTimestamp, rightTimestamp], k)
+                        console.log([leftTimestamp, rightTimestamp])
                     }
 
             }
