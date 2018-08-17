@@ -12,7 +12,7 @@ import {ChordSelector} from './chord_selector';
 import {make_voices_lockets} from './unlock_voices'
 import { createWavInput } from './file_upload';
 import {Initialize_record} from './record_audio';
-import {Initialize_canvas} from './drawing_stave'
+import {Initialize_canvas, send_callback} from './drawing_stave'
 
 import './styles/osmd.scss'
 import './styles/main.scss'
@@ -37,7 +37,8 @@ Tone.Instrument.prototype.pedalUp = function() {return this};
 // document.head.appendChild(wheelimport)
 
 document.body.style.marginBottom = '15px';
-let stepBox = 0; // Number of changes from the initial partition (used to remove previous boxes)
+let number_loaded_chorales = 1; // Number of different chorales loaded (used to remove previous boxes)
+let new_chorale = false
 Nexus.colors.accent = '#ffb6c1';  // '#f40081';  //  light pink
 Nexus.colors.fill = '#e5f5fd';  // light blue // '#f0f2ff';  // lilac triadic to '#ffb6c1'
 
@@ -230,20 +231,25 @@ function getMetadata() {
         chordLabels: getChordLabels()
     }
 }
+export{getMetadata};
 
 function onClickTimestampBoxFactory(timeStart: Fraction, timeEnd: Fraction) {
-    // k = k + 1;
     const  [quarternoteStart, quarternoteEnd] = ([timeStart, timeEnd].map(
         timeFrac => Math.round(4 * timeFrac.RealValue)))
-        // UrlTimerangeChange already contains locked voice arguments
-    const argsGenerationUrl = `&quarterNoteStart=${quarternoteStart}` +
-        `&quarterNoteEnd=${quarternoteEnd}`;
-    const argsMidiUrl = "get-midi";
     return (function (this, event) {
-      console.log(UrlTimerangeChange)
-        loadMusicXMLandMidi(serverUrl + UrlTimerangeChange + argsGenerationUrl,
-          serverUrl + argsMidiUrl);
-    ;})
+      if (constrainDrawing.state) {
+        send_callback(quarternoteStart, quarternoteEnd);
+      }
+      else{
+        var argsGenerationUrl = `&quarterNoteStart=${quarternoteStart}` +
+            `&quarterNoteEnd=${quarternoteEnd}`;
+        const argsMidiUrl = "get-midi";
+        console.log(UrlTimerangeChange)
+          loadMusicXMLandMidi(serverUrl + UrlTimerangeChange + argsGenerationUrl,
+            serverUrl + argsMidiUrl);
+      }
+
+    })
 }
 
 function blockall(e) {
@@ -284,8 +290,12 @@ function loadMusicXMLandMidi_callback (xmldata: XMLDocument, urlMidi: string) {
     osmd.load(xmldata)
         .then(
             () => {
-                  stepBox = stepBox + 1;
-                  osmd.rendering(onClickTimestampBoxFactory, stepBox);
+                  console.log(new_chorale);
+                  if (new_chorale){
+                    $('.timecontainer').remove()
+                  }
+                  osmd.render(onClickTimestampBoxFactory);
+                  new_chorale = false;
                   set_tone_time_parameters();
                   enableChanges();
                   loadMidi(urlMidi);
@@ -596,7 +606,7 @@ function scheduleTrackToInstrument(midiTrack, isChords=false) {
     }
 }
 
-function loadMidi(url: string) {
+export function loadMidi(url: string, draw_boxes=true) {
     MidiConvert.load(url, function(midi) {
         Tone.Transport.cancel()  // remove all scheduled events
 
@@ -605,14 +615,16 @@ function loadMidi(url: string) {
             Tone.Transport.bpm.value = midi.header.bpm;
             Tone.Transport.timeSignature = midi.header.timeSignature;
 
-            let drawCallback = (time, step) => {
-                    // DOM modifying callback should be put in Tone.Draw scheduler!
-                    // see: https://github.com/Tonejs/Tone.js/wiki/Performance#syncing-visuals
-                    Tone.Draw.schedule((time) => {nowPlayingCallback(time, step)}, time);
-                    }
+            if (draw_boxes){
+              let drawCallback = (time, step) => {
+                      // DOM modifying callback should be put in Tone.Draw scheduler!
+                      // see: https://github.com/Tonejs/Tone.js/wiki/Performance#syncing-visuals
+                      Tone.Draw.schedule((time) => {nowPlayingCallback(time, step)}, time);
+                      }
 
-            // schedule quarter-notes clock
-            new Tone.Sequence(drawCallback, steps, '4n').start(0);
+              // schedule quarter-notes clock
+              new Tone.Sequence(drawCallback, steps, '4n').start(0);
+            }
 
             if (!osmd.leadsheet) {
                 for (let track of midi.tracks) {
@@ -671,12 +683,15 @@ WebMidi.enable(function (err) {
 
 let urlLoadfile = serverUrl + 'load-audio-file';
 
-function load_chorale(xmldata : XMLDocument) {
+function load_chorale(xmldata : XMLDocument, isNew: boolean) {
+      new_chorale = isNew;
       loadMusicXMLandMidi_callback(xmldata, serverUrl + 'get-midi');
-      playbutton.flip(false);
-      make_voices_lockets(true);
-      Tone.Transport.stop();
-      nowPlayingCallback(0, 0);
+      if (isNew){
+        playbutton.flip(false);
+        make_voices_lockets(true);
+        Tone.Transport.stop();
+        nowPlayingCallback(0, 0);
+        }
       }
 
 function compute_chorale_from_audio_part (url_analyse: string, audio_file_name: string) {
@@ -685,8 +700,8 @@ function compute_chorale_from_audio_part (url_analyse: string, audio_file_name: 
           type: 'GET',
           contentType: false,
           processData: false,
-          success: load_chorale
-              })
+          success: (xmldata : XMLDocument) => {load_chorale(xmldata, true);}
+        });
         }
 
 createWavInput(urlLoadfile, (audio_file_name: string) =>
@@ -721,6 +736,19 @@ Initialize_record(urlLoadfile, function(tempo_record: number) {
 
 Initialize_canvas();
 
+let constrainDrawingElem: HTMLElement = document.createElement("div");
+constrainDrawingElem.id = 'constrain-drawing-button';
+document.getElementById('drawing-controls').appendChild(constrainDrawingElem);
+
+let constrainDrawing = new Nexus.TextButton('#constrain-drawing-button',{
+    'size': [200,50],
+    'state': false,
+    'text': 'Follow drawing',
+    'alternateText' : 'Stop following drawing'
+});
+
+constrainDrawing.on('change', (e) => {});
+constrainDrawing.textElement.style.fontSize = '16px';
 
 export {serverUrl};
 export {load_chorale};

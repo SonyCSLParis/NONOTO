@@ -11,12 +11,12 @@ export declare class eOSMD extends OpenSheetMusicDisplay {
     readonly chordSelectors: ChordSelector[];
     private _fermatas;
     readonly fermatas: FermataBox[];
-    rendering(onclickFactory: any, k: number): void;
+    render(onclickFactory?: any): void;
     private computeBoundingBoxes;
     private computePositionZoom;
     private createTimeDiv;
     sequenceDuration(): number;
     private drawChordBox;
-    drawTimestampBoxes(onclickFactory: any, k: number): void;
+    drawTimestampBoxes(onclickFactory?: any): void;
     readonly boundingBoxes: [number, number, number, number][];
 }

@@ -32,15 +32,14 @@ export class eOSMD extends OpenSheetMusicDisplay {
         return this._fermatas;
     }
 
-    public rendering(onclickFactory=undefined, k: number): void {
+    public render(onclickFactory=undefined): void {
         super.render()
-        this.drawTimestampBoxes(onclickFactory, k)
+        this.drawTimestampBoxes(onclickFactory)
     }
 
     private computeBoundingBoxes(): void {
         // TODO find measureIndex and staffIndex
         let measureList = this.graphicalMusicSheet.MeasureList;
-        let numberOfStaves = measureList[0].length;
         let staffIndex = 0;
         let boundingBoxes = [];
         for (let measureIndex in measureList) {
@@ -75,11 +74,10 @@ export class eOSMD extends OpenSheetMusicDisplay {
     */
     private createTimeDiv(x, y, width, height, divClass: string, divId: string,
         onclick: (PointerEvent) => void,
-        timestamps: [Fraction, Fraction], k: number): HTMLElement {
+        timestamps: [Fraction, Fraction]): HTMLElement {
         // container for positioning the timestamp box and attached boxes
         // needed to properly filter click actions
 
-        let commonStep = document.getElementById('step' + k);
 
         const commonDivId = divId + '-common'
         let commonDiv = (document.getElementById(commonDivId) ||
@@ -137,9 +135,8 @@ export class eOSMD extends OpenSheetMusicDisplay {
             }, false);
 
             // add div to the rendering backend's <HTMLElement> for positioning
-            // let inner = this.renderingBackend.getInnerElement();
-            // inner.appendChild(commonStep);
-            commonStep.appendChild(commonDiv);
+            let inner = this.renderingBackend.getInnerElement();
+            inner.appendChild(commonDiv);
             commonDiv.appendChild(div);
             if (!this.leadsheet && divClass === 'quarter-note') {  // FIXME hardcoded quarter-note duration
                 // add fermata selection box
@@ -151,27 +148,11 @@ export class eOSMD extends OpenSheetMusicDisplay {
                 this._chordSelectors.push(new ChordSelector(commonDiv));
             }
         }
+
         else {
-          // boxes already constructed at previous step
-          commonStep.appendChild(commonDiv);
+          let inner = this.renderingBackend.getInnerElement();
+          inner.appendChild(commonDiv);
           commonDiv.appendChild(div);
-          if (!this.leadsheet && divClass === 'quarter-note') {
-          // reinit all previous fermata boxes to avoid bugs
-              let fermata_container = document.getElementById(commonDiv.id + '-FermataBox');
-              // preserve 'active' class of fermata box set by users
-              if (!fermata_container.classList.contains('imposed') && fermata_container.classList.contains('active')) {
-                commonDiv.removeChild(fermata_container);
-                let new_fermata = new FermataBox(commonDiv, this.sequenceDuration())
-                new_fermata.container.classList.add('active')
-                this._fermatas.push(new_fermata);
-              }
-              else {
-                commonDiv.removeChild(fermata_container);
-                this._fermatas.push(new FermataBox(commonDiv, this.sequenceDuration()));
-              }
-          }
-
-
         }
 
 
@@ -202,19 +183,14 @@ export class eOSMD extends OpenSheetMusicDisplay {
         timestampDiv.parentNode.appendChild(chordDiv);
     };
 
-    public drawTimestampBoxes(onclickFactory=undefined, k: number): void{
+    public drawTimestampBoxes(onclickFactory=undefined): void{
         // FIXME this assumes a time signature of 4/4
 
-        let inner = this.renderingBackend.getInnerElement();
-        let commonStep = document.createElement('div');
-          commonStep.id = 'step' + k;
-        inner.appendChild(commonStep);
 
         function makeTimestamps(timeTuples: [number, number][]): Fraction[]{
             return timeTuples.map(([num, den]) => new Fraction(num, den))
         }
         let measureList = this.graphicalMusicSheet.MeasureList;
-        let numberOfStaves = measureList[0].length;
         const timestampsQuarter: Fraction[] = makeTimestamps([[0, 4], [1, 4],
             [2, 4], [3, 4], [4, 4]])
         const timestampsHalf: Fraction[] = makeTimestamps([[0, 2], [1, 2], [2, 2]])
@@ -276,29 +252,19 @@ export class eOSMD extends OpenSheetMusicDisplay {
                         }
                         let width = xRight - xLeft;
                         let onclick = (event) => {};
-                        if (onclickFactory) {onclick = onclickFactory(leftTimestamp, rightTimestamp, k)}
+                        if (onclickFactory) {onclick = onclickFactory(leftTimestamp, rightTimestamp)}
 
                         let timediv = this.createTimeDiv(
                             xLeft, y, width, height,
                             granularityName,
                             `${granularityName}-${measureIndex}-${timestampIndex}$`,
                             onclick,
-                            [leftTimestamp, rightTimestamp], k)
-                        console.log([leftTimestamp, rightTimestamp])
+                            [leftTimestamp, rightTimestamp])
                     }
 
             }
 
             let duration = sourceMeasure.Duration
-        }
-        // Reset all boxes to avoid bugs when sequenceDuration diminishes
-        if (k > 1) {
-          let previousStep = k - 1;
-          let previousBoxes = document.getElementById('step' + previousStep)
-          // while (this._fermatas.length > this.sequenceDuration()) {
-          //   previousBoxes.removeChild(lastChild)
-          //   if (this.divClass ==='quarter-note') {this._fermatas.pop()}
-          previousBoxes.parentNode.removeChild(previousBoxes)
         }
     };
 

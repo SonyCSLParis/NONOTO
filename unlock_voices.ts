@@ -65,7 +65,6 @@ export function make_voices_lockets(uploading=false) {
       'alternateText': 'Unlock'
   });
 
-
   let tenor_locked = document.createElement('div')
   tenor_locked.id = 'tenor_locked';
   voiceBar.appendChild(tenor_locked);
