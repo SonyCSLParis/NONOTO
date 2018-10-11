@@ -353,9 +353,9 @@ if (insertWavInput) {
 };
 
 $(() => {
-    LinkClient.kill();
     if (useAdvancedControls) {
         // Insert LINK client controls
+        // LinkClient.kill();
         LinkClientCommands.render();
         LinkClientCommands.renderDownbeatDisplay();
     }}

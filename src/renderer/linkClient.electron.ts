@@ -11,6 +11,58 @@ let link_channel_prefix: string = require('../common/config.json')['link_channel
 let link_initialized: boolean = false;
 let link_enabled: boolean = false;
 
+export function initializeClient(): void {
+    ipcRenderer.on(link_channel_prefix + 'initialized-status',
+        (_, initializedStatus: boolean) => {
+            log.debug('initializedStatus:');
+            log.debug(initializedStatus);
+            link_initialized = initializedStatus;
+        }
+    );
+
+
+    ipcRenderer.on(link_channel_prefix + 'enabled-status', (_, enabledStatus: boolean) => {
+        log.debug('enabledStatus:');
+        log.debug(enabledStatus);
+        link_enabled = enabledStatus;
+    });
+
+
+    ipcRenderer.on(link_channel_prefix + 'enable-success', (_, enable_succeeded: boolean) => {
+            if (enable_succeeded) {
+                link_enabled = true;
+                setBPMtoLinkBPM_async();
+                log.info('Succesfully enabled Link');
+            }
+            else {log.error('Failed to enable Link')};
+        }
+    )
+
+    ipcRenderer.on(link_channel_prefix + 'disable-success', (_, disable_succeeded) => {
+            if (disable_succeeded) {
+                link_enabled = false;
+                log.info('Succesfully disabled Link');
+            }
+            else {log.error('Failed to disable Link')};
+        }
+    );
+
+    // Tempo
+    ipcRenderer.on(link_channel_prefix + 'tempo', (_, newBPM) => {
+        BPM.setBPM(newBPM); }
+    );
+
+
+    // numPeers
+    ipcRenderer.on('numPeers', (_, numPeers) => {
+        // this display is required as per the Ableton-link test-plan
+        // (https://github.com/Ableton/link/blob/master/TEST-PLAN.md)
+        new Notification('DeepBach/Ableton LINK interface', {
+            body: 'Number of peers changed, now ' + numPeers + ' peers'
+      });
+  });
+};
+
 function getState(): void {
     // get current state of the LINK-server on loading the client
     ipcRenderer.send(link_channel_prefix + 'ping');
@@ -57,47 +109,7 @@ export function kill(): void {
 }
 
 
-ipcRenderer.on(link_channel_prefix + 'initialized-status',
-    (_, initializedStatus: boolean) => {
-        log.debug('initializedStatus:');
-        log.debug(initializedStatus);
-        link_initialized = initializedStatus;
-    }
-);
-
-
-ipcRenderer.on(link_channel_prefix + 'enabled-status', (_, enabledStatus: boolean) => {
-    log.debug('enabledStatus:');
-    log.debug(enabledStatus);
-    link_enabled = enabledStatus;
-});
-
-
-ipcRenderer.on(link_channel_prefix + 'enable-success', (_, enable_succeeded: boolean) => {
-        if (enable_succeeded) {
-            link_enabled = true;
-            setBPMtoLinkBPM_async();
-            log.info('Succesfully enabled Link');
-        }
-        else {log.error('Failed to enable Link')}
-    }
-)
-
-ipcRenderer.on(link_channel_prefix + 'disable-success', (_, disable_succeeded) => {
-        if (disable_succeeded) {
-            link_enabled = false;
-            log.info('Succesfully disabled Link');
-        }
-        else {log.error('Failed to disable Link')}
-    }
-)
-
-
 // Tempo
-ipcRenderer.on(link_channel_prefix + 'tempo', (_, newBPM) => {
-    BPM.setBPM(newBPM); }
-);
-
 export function setBPMtoLinkBPM_async(): void {
     if (isEnabled()) {
         ipcRenderer.emit(link_channel_prefix + 'get_bpm');
@@ -108,23 +120,12 @@ export function updateLinkBPM(newBPM) {
     ipcRenderer.send(link_channel_prefix + 'tempo', newBPM);
 }
 
-// numPeers
-ipcRenderer.on('numPeers', (_, numPeers) => {
-    // this display is required as per the Ableton-link test-plan
-    // (https://github.com/Ableton/link/blob/master/TEST-PLAN.md)
-    new Notification('DeepBach/Ableton LINK interface', {
-        body: 'Number of peers changed, now ' + numPeers + ' peers'
-  })
-})
-
-
 // Schedule a LINK dependent callback
 export function on(message, callback) {
 ipcRenderer.on(link_channel_prefix + message, () => {
     callback();;
 })
 }
-
 
 // Schedule a LINK dependent callback once
 export function once(message, callback) {

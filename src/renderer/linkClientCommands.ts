@@ -1,12 +1,24 @@
-import { ipcRenderer } from 'electron'
-import * as log from 'loglevel'
-import * as $ from 'jquery'
+import { ipcRenderer } from 'electron';
+import * as log from 'loglevel';
+import * as $ from 'jquery';
 
-import LinkClient from './linkClient'
+import LinkClient from './linkClient';
 
-let Nexus = require('./nexusColored')
+let Nexus = require('./nexusColored');
 
-import * as BPM from './bpm'
+import * as BPM from './bpm';
+
+declare var COMPILE_ELECTRON: boolean;  // uses webpack.DefinePlugin
+
+let linkdisplayButton;
+
+function registerDownbeatDisplayListener() {
+    LinkClient.on('downbeat', () => {
+        linkdisplayButton.down();
+        if (linkDisplayTimeout) clearTimeout(linkDisplayTimeout);
+        linkDisplayTimeout = setTimeout(() => linkdisplayButton.up(), 100)}
+    )
+};
 
 export function render() {
     let topControlsGridElem = document.getElementById('bottom-controls')
@@ -21,15 +33,33 @@ export function render() {
         'alternateText': 'Disable LINK'
     });
 
-    linkbutton.on('change', (enable) => {
+    function toggleLinkClient(enable: boolean): void {
         if (enable) {
             LinkClient.enable();
         }
         else {
-            LinkClient.disable()
+            LinkClient.disable();
+        };
+    };
+
+    let firstPress: boolean = true;
+    linkbutton.on('change', (enable) => {
+        if (firstPress) {
+            LinkClient.initializeClient();
+            registerDownbeatDisplayListener();
+            firstPress = false;
+            if (!COMPILE_ELECTRON) {
+                console.log("Scheduling connect callback");
+                LinkClient.once('connect', () => {
+                    toggleLinkClient(enable);
+                    console.log("Deferred link client toggling");
+                });
+                return;
+            }
         }
+        toggleLinkClient(enable);
     });
-}
+};
 
 let linkDisplayTimeout;
 export function renderDownbeatDisplay(): void{
@@ -39,15 +69,9 @@ export function renderDownbeatDisplay(): void{
     linkdisplayElem.style.pointerEvents = 'none';
     topControlsGridElem.appendChild(linkdisplayElem);
 
-    let linkdisplayButton = new Nexus.Button('#link-display',{
+    linkdisplayButton = new Nexus.Button('#link-display', {
         'size': [40, 40],
         'state': false,
         'mode': 'button'
     });
-
-    LinkClient.on('downbeat', () => {
-        linkdisplayButton.down();
-        if (linkDisplayTimeout) clearTimeout(linkDisplayTimeout);
-        linkDisplayTimeout = setTimeout(() => linkdisplayButton.up(), 100)}
-    )
-}
+};
