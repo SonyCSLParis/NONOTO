@@ -238,6 +238,14 @@ tools.Spray = function (event, cx) {
         clearInterval(spray);
     });
 };
+
+tools.Rectangle = function (event, cx) {
+    var currentPos = relativePos(event, cx.canvas);
+    trackDrag(function (event) {
+        var newPos = relativePos(event, cx.canvas);
+        cx.fillRect(currentPos.x, currentPos.y, (currentPos.x - newPos.x) * -1, (currentPos.y - newPos.y) * -1);        
+    }, null)
+}
 ////////
 
 
