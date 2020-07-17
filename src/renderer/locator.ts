@@ -19,10 +19,12 @@ export class Spectrogram {
         // necessary to handle 'busy' state cursor change and pointer events disabling
         this.interfaceContainer = document.createElement('div');
         this.interfaceContainer.id = this.container.id + '-interface-container';
+        this.interfaceContainer.style.visibility = "hidden";
         this.container.appendChild(this.interfaceContainer);
 
         this.shadowContainer = document.createElement('div');
         this.shadowContainer.id = this.container.id + '-shadow-container';
+        this.shadowContainer.style.visibility = "hidden";
         this.interfaceContainer.appendChild(this.shadowContainer);
 
         window.addEventListener('resize', (uiEvent: UIEvent) => {
@@ -125,8 +127,6 @@ export class Spectrogram {
             }
 
             const numScrollSteps = this.vqvaeTimestepsTop - numColumnsTop + 1;
-
-            this.toggleNoscroll(numScrollSteps == 1);
             Array(numScrollSteps).fill(0).forEach(
                 () => {
                     let snapElem = document.createElement('snap');
@@ -143,11 +143,6 @@ export class Spectrogram {
 
             // TODO(theis): must adapt the spectrogram's image size to the resulting grid's size
             // since the grid size is rounded up to the number of rows and columns
-    }
-
-    protected toggleNoscroll(force?: boolean): void {
-        // when set, prevents the scroll-bar from appearing
-        this.container.classList.toggle('no-scroll', force)
     }
 }
 

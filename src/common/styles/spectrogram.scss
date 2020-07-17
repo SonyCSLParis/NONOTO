@@ -28,11 +28,19 @@ $spectrogram-height: 45vh;
         position: absolute;
         left: 0;
     }
+}
 
-    &.no-scroll .simplebar-track.simplebar-horizontal {
-        display: none;
-        visibility: hidden;
-    }
+#Canvas {
+    position: absolute;
+    margin-left: 5vw;
+    width: 1511px;
+    top: 10%;
+    height: 550px;
+    z-index: 0;
+    background-color: white;
+    border: 2px;
+    border-color: black;
+    border-style: solid;
 }
 
 #spectrogram-image-container {
@@ -117,7 +125,7 @@ $spectrogram-height: 45vh;
     width: measures.$spectrogram-width !important;
     top: 10%;
     height: $spectrogram-height;
-    z-index: 0;
+    z-index: 1;
     // background: $spectrogram-background-color;
 
     &:before, &:after {
