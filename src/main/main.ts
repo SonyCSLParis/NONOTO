@@ -4,7 +4,7 @@ app.commandLine.appendSwitch('disable-pinch');
 import * as log from 'loglevel'
 
 import * as WindowManager from './windowManager'
-import LinkServer from './linkServer'
+//import LinkServer from './linkServer'
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -33,9 +33,9 @@ app.on('activate', function () {
   }
 })
 
-ipcMain.on('disconnect', () => LinkServer.killLink());
+//ipcMain.on('disconnect', () => LinkServer.killLink());
 
-LinkServer.attachListeners()
+//LinkServer.attachListeners()
 
 if (module.hot) {
     module.hot.accept();

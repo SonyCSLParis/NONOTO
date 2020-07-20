@@ -114,7 +114,9 @@ var controls = Object.create(null);
 var tools = Object.create(null);
 
 function createPaint(parent) {
-    var canvas = init("canvas", { width: "1511", height: "550", id: "Canvas" });
+    var canvas = init("canvas", { id: "Canvas" });
+    canvas.width = document.getElementById("spectrogram-container-interface-container").clientWidth;
+    canvas.height = document.getElementById("spectrogram-container-interface-container").offsetHeight;
     var cx = canvas.getContext("2d");
     var toolbar = init("div", { class: "toolbar" });
     for (var name in controls)
@@ -161,6 +163,14 @@ controls.brushSize = function (cx) {
     });
     return init("span", null, "Brush size: ", select);
 };
+
+controls.clear = function (cx) {
+    var input = init("input", { type: "button", value: "Clear" });
+    input.addEventListener("click", function () {
+        cx.canvas.getContext("2d").clearRect(0, 0, cx.canvas.width, cx.canvas.height);
+    });
+    return init("span", null, "   ", input);
+}
 
 function relativePos(event, element) {
     var rect = element.getBoundingClientRect();
@@ -247,7 +257,6 @@ tools.Rectangle = function (event, cx) {
     }, null)
 }
 ////////
-
 
 async function render(configuration=defaultConfiguration) {
     disableChanges();
@@ -393,7 +402,6 @@ async function render(configuration=defaultConfiguration) {
         let spectrogramContainerElem = document.createElement('div');
         spectrogramContainerElem.id = 'spectrogram-container';
         mainPanel.appendChild(spectrogramContainerElem);
-        spectrogramContainerElem.appendChild(createPaint(spectrogramContainerElem));
 
         let spectrogramImageContainerElem = document.createElement('div');
         spectrogramImageContainerElem.id = 'spectrogram-image-container';
@@ -414,6 +422,10 @@ async function render(configuration=defaultConfiguration) {
         spectrogramPictureElem.appendChild(spectrogramSnapPointsElem);
 
         let spectrogram = new Spectrogram(spectrogramContainerElem);
+
+        let paintContainer = init("div", { id: "paintContainer" });
+        spectrogramContainerElem.appendChild(paintContainer);
+        paintContainer.appendChild(createPaint(spectrogramContainerElem));
 
         spectrogramPlaybackManager = new SpectrogramPlaybackManager(spectrogram);
         playbackManager = spectrogramPlaybackManager;

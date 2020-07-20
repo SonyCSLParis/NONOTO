@@ -30,17 +30,22 @@ $spectrogram-height: 45vh;
     }
 }
 
-#Canvas {
+#paintContainer {
     position: absolute;
     margin-left: 5vw;
-    width: 1511px;
+    width: measures.$spectrogram-width !important;
     top: 10%;
-    height: 550px;
+    height: $spectrogram-height;
     z-index: 0;
     background-color: white;
     border: 2px;
     border-color: black;
     border-style: solid;
+}
+
+#Canvas {
+    width: 100%;
+    height: 100%;
 }
 
 #spectrogram-image-container {
