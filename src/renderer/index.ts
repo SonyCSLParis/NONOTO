@@ -112,44 +112,23 @@ function init(name, attributes, ...rest) {
 /////CANVAS CREATION///////
 var controls = Object.create(null);
 var tools = Object.create(null);
+var points = [];
+var redoStack = [];
 
 function createPaint(parent) {
     var canvas = init("canvas", { id: "Canvas" });
     canvas.width = document.getElementById("spectrogram-container-interface-container").clientWidth;
     canvas.height = document.getElementById("spectrogram-container-interface-container").offsetHeight;
     var cx = canvas.getContext("2d");
-    var toolbar = init("div", { class: "toolbar" });
+    let bottomControlsGridElem = document.getElementById('bottom-controls');
+//    var toolbar = init("div", { class: "toolbar" });
     for (var name in controls)
-        toolbar.appendChild(controls[name](cx));
+        bottomControlsGridElem.appendChild(controls[name](cx));
 
 //    var panel = init("div", { class: "picturepanel" }, canvas);
-    parent.appendChild(init("div", null, toolbar));
+//    parent.appendChild(init("div", null, toolbar));
     return canvas;
 }
-
-controls.tool = function (cx) {
-    var select = init("select", {});
-    for (var name in tools)
-        select.appendChild(init("option", null, name));
-
-    cx.canvas.addEventListener("mousedown", function (event) {
-        if (event.which == 1) {
-            tools[select.value](event, cx);
-            event.preventDefault();
-        }
-    });
-
-    return init("span", null, "Tool: ", select);
-};
-
-controls.color = function (cx) {
-    var input = init("input", { type: "color" });
-    input.addEventListener("change", function () {
-        cx.fillStyle = input.value;
-        cx.strokeStyle = input.value;
-    });
-    return init("span", null, "Color: ", input);
-};
 
 controls.brushSize = function (cx) {
     var select = init("select", {});
@@ -164,12 +143,163 @@ controls.brushSize = function (cx) {
     return init("span", null, "Brush size: ", select);
 };
 
+controls.tool = function (cx) {
+    var select = init("select", {});
+    for (var name in tools)
+        select.appendChild(init("option", null, name));
+
+    cx.canvas.addEventListener("mousedown", function (event) {
+        if (event.which == 1) {
+            tools[select.value](event, cx);
+            redoStack = [];         //Clear the RedoStack when an action is complete
+            event.preventDefault();
+        }
+    });
+
+    return init("span", null, "Tool: ", select);
+};
+
+var colors = {
+    'bass': "Black", 
+    'brass': "Blue",
+    'flute': "Aquamarine",
+    'guitar': "BlueViolet",
+    'keyboard': "YellowGreen",
+    'mallet': "Yellow",
+    'organ': "Green",
+    'reed' : "Red", 
+    'string' : "Gray", 
+    'synth_lead': "Indigo", 
+    'vocal' : "DarkOrange"
+}
+
+controls.instrument = function (cx) {
+
+    let instrumentSelectElem: HTMLElement = document.createElement('control-item');
+    instrumentSelectElem.id = 'instrument-control';
+//    bottomControlsGridElem.appendChild(instrumentSelectElem);
+    instrumentSelect = new Nexus.Select('#instrument-control', {
+        'size': [150, 50],
+        'options': ['bass', 'brass', 'flute',
+            'guitar', 'keyboard', 'mallet', 'organ',
+            'reed', 'string', 'synth_lead', 'vocal'
+        ],
+        'value': 'organ',
+    }, function () {
+        cx.fillStyle = colors[this.value];
+        cx.strokeStyle = colors[this.value];
+    });
+/*    instrumentSelect.innerContainerElement.addEventListener("change", function () {
+        cx.fillStyle = colors[instrumentSelect.value];
+        cx.strokeStyle = colors[instrumentSelect.value];
+    });*/
+    ControlLabels.createLabel(instrumentSelectElem, 'instrument-control-label');
+    return instrumentSelectElem;
+}
+
+/*controls.color = function (cx) {
+    var input = init("input", { type: "color" });
+    input.addEventListener("change", function () {
+        cx.fillStyle = input.value;
+        cx.strokeStyle = input.value;
+    });
+    return init("span", null, "Color: ", input);
+};*/
+
 controls.clear = function (cx) {
     var input = init("input", { type: "button", value: "Clear" });
     input.addEventListener("click", function () {
         cx.canvas.getContext("2d").clearRect(0, 0, cx.canvas.width, cx.canvas.height);
+        points.push({size: cx.lineWidth, color: cx.fillStyle, tool: "Clear",});
     });
-    return init("span", null, "   ", input);
+    return init("span", null, "", input);
+}
+
+function DrawPoint(cx, p) {
+
+    //Keep actual color & size
+    var actualColor = cx.fillStyle;
+    var actualWidth = cx.lineWidth;
+
+
+    cx.fillStyle = p.color;
+    cx.strokeStyle = p.color;
+    cx.lineWidth = p.size;
+
+    switch (p.tool) {
+        case "Line":
+            var last = null
+            p.all.forEach(point => {
+                cx.beginPath();
+                if (last)
+                    cx.moveTo(last.x, last.y);
+                cx.lineTo(point.x, point.y);
+                cx.stroke();
+                last = point;
+            });
+            break;
+
+        case "Text":
+            cx.fillText(p.text, p.x, p.y);
+            break;
+        case "Spray":
+            p.all.forEach(point => {
+                cx.fillRect(point.x, point.y, 1, 1);
+            });
+            break;
+        case "Rectangle":
+            cx.fillRect(p.Rect.x, p.Rect.y, p.Rect.sizex, p.Rect.sizey);
+            break;
+        case "Clear":
+            cx.canvas.getContext("2d").clearRect(0, 0, cx.canvas.width, cx.canvas.height);
+            break;
+    }
+
+    //Re set the actual color a size selected
+    cx.fillStyle = actualColor;
+    cx.strokeStyle = actualColor;
+    cx.lineWidth = actualWidth;
+}
+
+controls.undo = function (cx) {
+    var input = init("input", { type: "button", value: "Undo", id: "Undo" });
+    input.addEventListener("click", function () {
+        //remove the last draw point
+        var lastPoint = points.pop();
+
+        //add point removed to redo stack
+        redoStack.push(lastPoint);
+
+        //Clear all the canvas
+        cx.canvas.getContext("2d").clearRect(0, 0, cx.canvas.width, cx.canvas.height);
+
+        //Redraw all without the last action
+        points.forEach(p => {
+            DrawPoint(cx, p);
+        });
+    });
+
+    return init("span", null, "", input);
+}
+
+controls.redo = function (cx) {
+    var input = init("input", { type: "button", value: "Redo", id: "Redo" });
+    input.addEventListener("click", function () {
+
+        //remove the last Undo Action
+        var lastPoint = redoStack.pop();
+
+        if (!lastPoint)
+            return;
+
+        //Draw the last Undo Action
+        DrawPoint(cx, lastPoint);
+
+        //Re push the redo action in the points buffer for undo it
+        points.push(lastPoint);
+    });
+
+    return init("span", null, "", input);
 }
 
 function relativePos(event, element) {
@@ -194,6 +324,8 @@ function trackDrag(onMove, onEnd) {
 tools.Line = function (event, cx, onEnd) {
     cx.lineCap = "round";
 
+    var allPoints = [];
+
     var pos = relativePos(event, cx.canvas);
     trackDrag(function (event) {
         cx.beginPath();
@@ -201,14 +333,28 @@ tools.Line = function (event, cx, onEnd) {
         pos = relativePos(event, cx.canvas);
         cx.lineTo(pos.x, pos.y);
         cx.stroke();
-    }, onEnd /* Do nothing an end */);
+        allPoints.push({x: pos.x, y: pos.y});
+    }, onEnd ? onEnd : function () {
+        points.push({
+            size: cx.lineWidth,
+            color: cx.fillStyle,            
+            tool: "Line",
+            all: allPoints,
+            }); //Push the drawed line for Undo task
+        }
+    );
 };
 
 tools.Erase = function (event, cx) {
     cx.globalCompositeOperation = "destination-out";
     tools.Line(event, cx, function () {
         cx.globalCompositeOperation = "source-over";
-    });
+        points.push({
+            size: cx.lineWidth,
+            color: cx.fillStyle,
+            tool: "Erased",
+        }); //Push the drawed line for Undo task
+    })
 };
 
 tools.Text = function (event, cx) {
@@ -217,6 +363,14 @@ tools.Text = function (event, cx) {
         var pos = relativePos(event, cx.canvas);
         cx.font = Math.max(7, cx.lineWidth) + "px sans-serif";
         cx.fillText(text, pos.x, pos.y);
+        points.push({
+            x: pos.x,
+            y: pos.y,
+            text: text,
+            size: cx.lineWidth,
+            color: cx.fillStyle,
+            tool: "Text",
+        }); //Push the drawed Text for Undo task
     }
 };
 
@@ -234,29 +388,67 @@ tools.Spray = function (event, cx) {
     var area = radius * radius * Math.PI;
     var dotsPerTick = Math.ceil(area / 30);
 
+    var allPoints = [];
+
     var currentPos = relativePos(event, cx.canvas);
     var spray = setInterval(function () {
         for (var i = 0; i < dotsPerTick; i++) {
             var offset = randomPointInRadius(radius);
             cx.fillRect(currentPos.x + offset.x,
                 currentPos.y + offset.y, 1, 1);
+            allPoints.push({
+                x: currentPos.x + offset.x,
+                y: currentPos.y + offset.y
+            })
         }
     }, 25);     //Draw random point each 25 millisecond
     trackDrag(function (event) {
         currentPos = relativePos(event, cx.canvas);
     }, function () {    //On end
         clearInterval(spray);
+        points.push({
+            size: cx.lineWidth,
+            color: cx.fillStyle,
+            tool: "Spray",
+            all: allPoints
+        }); //Push the drawed Spray for Undo task
     });
 };
 
 tools.Rectangle = function (event, cx) {
     var currentPos = relativePos(event, cx.canvas);
+    var Rect = null;
     trackDrag(function (event) {
         var newPos = relativePos(event, cx.canvas);
-        cx.fillRect(currentPos.x, currentPos.y, (currentPos.x - newPos.x) * -1, (currentPos.y - newPos.y) * -1);        
-    }, null)
+        cx.fillRect(currentPos.x, currentPos.y, (currentPos.x - newPos.x) * -1, (currentPos.y - newPos.y) * -1);
+        Rect = {
+            x: currentPos.x,
+            y: currentPos.y,
+            sizex: (currentPos.x - newPos.x) * -1,
+            sizey: (currentPos.y - newPos.y) * -1,
+        }
+    }, function () {
+        points.push({
+            Rect: Rect,
+            size: cx.lineWidth,
+            color: cx.fillStyle,
+            tool: "Rectangle",
+        }); //Push the drawed Rectangle for Undo task
+    })
 }
 ////////
+
+function KeyPress(e) {
+    var evtobj = window.event ? event : e
+    if (evtobj.keyCode == 90 && evtobj.ctrlKey) {
+        document.getElementById("Undo").click();
+    }
+    if (evtobj.keyCode == 85 && evtobj.ctrlKey) {
+        document.getElementById("Redo").click();
+    }
+}
+
+document.onkeydown = KeyPress;
 
 async function render(configuration=defaultConfiguration) {
     disableChanges();
@@ -380,14 +572,14 @@ async function render(configuration=defaultConfiguration) {
             let instrumentSelectElem: HTMLElement = document.createElement('control-item');
             instrumentSelectElem.id = 'instrument-control';
             bottomControlsGridElem.appendChild(instrumentSelectElem);
-            instrumentSelect = new Nexus.Select('#instrument-control', {
+/*            instrumentSelect = new Nexus.Select('#instrument-control', {
                 'size': [150, 50],
                 'options': ['bass', 'brass', 'flute',
                     'guitar', 'keyboard', 'mallet', 'organ',
                     'reed', 'string', 'synth_lead', 'vocal'
                 ],
                 'value': 'organ',
-            });
+            });*/
             ControlLabels.createLabel(instrumentSelectElem, 'instrument-control-label');
         });
     };
