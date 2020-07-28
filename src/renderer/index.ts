@@ -302,6 +302,30 @@ controls.redo = function (cx) {
     return init("span", null, "", input);
 }
 
+controls.switchButton = function(cx) {
+    var input = init("input", {type: "button", value: "SwitchButton"});
+    let paintContainer = document.getElementById('paintContainer');
+    let spectrogramImage = document.getElementById('spectrogram-image-container');
+    let spectrogramInterface = document.getElementById('spectrogram-container-interface-container');
+
+    input.addEventListener("click", function () {
+        if (paintContainer.style.display == "none") {
+            paintContainer.style.display = "initial";
+            spectrogramImage.style.display = "none";
+            spectrogramImage.style.visibility = "hidden";
+            spectrogramInterface.style.display = "none";
+            spectrogramInterface.style.visibility = "hidden";
+        } else if (paintContainer.style.display != "none") {
+            paintContainer.style.display = "none";
+            spectrogramImage.style.display = "initial";
+            spectrogramImage.style.visibility = "visible";
+            spectrogramInterface.style.display = "initial";
+            spectrogramInterface.style.visibility = "visible";
+        }
+    });
+    return init("span", null, input);
+}
+
 function relativePos(event, element) {
     var rect = element.getBoundingClientRect();
     return {
@@ -1004,6 +1028,11 @@ async function render(configuration=defaultConfiguration) {
         let bottomControlsGridElem = document.getElementById('bottom-controls')
         downloadButton = new DownloadButton(bottomControlsGridElem,
             configuration);
+    });
+
+    $(() => {
+       let bottomControlsGridElem = document.getElementById('bottom-controls')
+
     });
 
     $(() => {
