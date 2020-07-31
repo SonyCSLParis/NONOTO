@@ -36,6 +36,7 @@ import '../common/styles/controls.scss';
 import '../common/styles/simplebar.scss';
 import '../common/styles/disableMouse.scss';
 import { isNull } from 'util';
+import {getContext} from "tone";
 
 // defined at compile-time via webpack.DefinePlugin
 declare var COMPILE_ELECTRON: boolean;
@@ -114,6 +115,9 @@ var controls = Object.create(null);
 var tools = Object.create(null);
 var points = [];
 var redoStack = [];
+var canvasGrid = [];
+var canvasGridPos = [];
+var canvasGridModified = [];
 
 function createPaint(parent) {
     var canvas = init("canvas", { id: "Canvas" });
@@ -127,11 +131,175 @@ function createPaint(parent) {
 
 //    var panel = init("div", { class: "picturepanel" }, canvas);
 //    parent.appendChild(init("div", null, toolbar));
+    canvas = createCanvasGrid(canvas);
     return canvas;
 }
 
+// CREATE CANVAS GRID -----------------------------------------------------------
+
+function createCanvasGrid(canvas) {
+    var width = document.getElementById("spectrogram-container-interface-container").clientWidth;
+    var height = document.getElementById("spectrogram-container-interface-container").offsetHeight;
+    var cx = canvas.getContext("2d");
+    var col = 4;
+    var row = 32;
+    var ratioColWidth = width / col;
+    var ratioRowHeight = height / row;
+
+    // Stock the info of the future Rectangle of the grid
+    for (let i = 0; i < row; i++) {
+        for (let j = 0; j < col; j++) {
+            cx.beginPath();
+            canvasGrid.push({
+                x: ratioColWidth * j,
+                y: ratioRowHeight * i,
+                width: ratioColWidth,
+                height: ratioRowHeight,
+                strokeStyle: "whiteSmoke",
+                lineWidth: "1",
+                isDragging: false,
+                dominantColor: 'white'
+            });
+        }
+    }
+
+    // Create the list of Rectangles
+    for (var i = 0; i < canvasGrid.length; i++) {
+        canvasGridPos.push(new Rectangle(canvasGrid[i]));
+    }
+
+    // Setter of the Rectangles
+    function Rectangle(rec) {
+        var posX = this.posX = rec.x;
+        var posY = this.posY = rec.y;
+
+        this.width = rec.width;
+        this.height = rec.height;
+
+        // Draw the component
+        this.draw = function () {
+            cx.beginPath();
+            cx.strokeStyle = rec.strokeStyle;
+            cx.lineWidth = rec.lineWidth;
+            cx.rect(this.posX, this.posY, this.width, this.height);
+            cx.stroke();
+        }
+    }
+
+    drawGrid();
+    cx.strokeStyle = colors['bass'];
+    return canvas;
+}
+
+// Redraw the grid
+// TODO UNDO/REDO/CLEAR reboot the canvas -> have to redraw
+function drawGrid() {
+    for (var i = 0; i < canvasGridPos.length; i++) {
+        canvasGridPos[i].draw();
+    }
+}
+
+//-------------------------------------------------------------------------------
+// GET RGB ----------------------------------------------------------------------
+
+function getAverageRGB(canvas, i) {
+    var rgb = {r: 0, g: 0, b: 0};
+    var blockSize = 5;
+    var context = canvas.getContext && canvas.getContext('2d');
+    var data = context.getImageData(canvasGridPos[i].x, canvasGridPos[i].y, canvasGridPos[i].width, canvasGridPos[i].height);
+    var length = data.data.length;
+    var j = -4;
+    var count = 0;
+
+    while ((j += blockSize * 4) < length) {
+        ++count;
+        rgb.r += data.data[i];
+        rgb.g += data.data[i + 1];
+        rgb.b += data.data[i + 2];
+    }
+    // ~~ used to floor values
+    rgb.r = ~~(rgb.r / count);
+    rgb.g = ~~(rgb.g / count);
+    rgb.b = ~~(rgb.b / count);
+
+    return rgb;
+}
+
+var nbPxForEachColor = {
+    'Black': 0,
+    'Blue': 0,
+    'Aquamarine': 0,
+    'BlueViolet': 0,
+    'YellowGreen': 0,
+    'Yellow': 0,
+    'Green': 0,
+    'Red': 0,
+    'Gray': 0,
+    'Indigo': 0,
+    'DarkOrange': 0,
+}
+
+function getDominantRGB(canvas, i) {
+    var rgb = {r: 0, g: 0, b: 0};
+    var blockSize = 1; // Each pixel analyzed, 2 each two, 5 each five etc...
+    var context = canvas.getContext && canvas.getContext('2d');
+    var data = context.getImageData(canvasGridPos[i].x, canvasGridPos[i].y, canvasGridPos[i].width, canvasGridPos[i].height);
+    var length = data.data.length;
+    var j = -4;
+    var returnIndex;
+    var maxValue;
+
+    //Reset Array
+    for (let i = 0; i < 11; i++)
+        nbPxForEachColor[i] = 0;
+
+    //Find another Way to calcul px color
+    while ((j += blockSize * 4) < length) {
+        rgb.r = data.data[i];
+        rgb.g = data.data[i + 1];
+        rgb.b = data.data[i + 2];
+        if (rgb.r == 0, rgb.g == 0, rgb.b == 0)
+            nbPxForEachColor.Black++;
+        else if (rgb.r == 0, rgb.g == 0, rgb.b == 255)
+            nbPxForEachColor.Blue++;
+        else if (rgb.r == 127, rgb.g == 255, rgb.b == 212)
+            nbPxForEachColor.Aquamarine++;
+        else if (rgb.r == 138, rgb.g == 43, rgb.b == 226)
+            nbPxForEachColor.BlueViolet++;
+        else if (rgb.r == 154, rgb.g == 205, rgb.b == 50)
+            nbPxForEachColor.YellowGreen++;
+        else if (rgb.r == 255, rgb.g == 255, rgb.b == 0)
+            nbPxForEachColor.Yellow++;
+        else if (rgb.r == 0, rgb.g == 128, rgb.b == 0)
+            nbPxForEachColor.Green++;
+        else if (rgb.r == 255, rgb.g == 0, rgb.b == 0)
+            nbPxForEachColor.Red++;
+        else if (rgb.r == 128, rgb.g == 128, rgb.b == 128)
+            nbPxForEachColor.Gray++;
+        else if (rgb.r == 75, rgb.g == 0, rgb.b == 130)
+            nbPxForEachColor.Indigo++;
+        else if (rgb.r == 255, rgb.g == 140, rgb.b == 0)
+            nbPxForEachColor.DarkOrange++;
+    }
+
+    maxValue = nbPxForEachColor[0];
+    for (let i = 0; i < 11; i++) {
+        if (nbPxForEachColor[i] > maxValue) {
+            returnIndex = i;
+            maxValue = nbPxForEachColor[i];
+        }
+    }
+
+    let colorsArray = ['Black', "Blue", "Aquamarine", "BlueViolet", "YellowGreen", "Yellow",
+        "Green", "Red", "Gray", "Indigo", "DarkOrange"
+    ];
+
+    return colorsArray[returnIndex];
+}
+
+//_______________________________________________________________________________
 controls.brushSize = function (cx) {
-    var select = init("select", {});
+    var select = init("select", {id: 'brushSizeSelector'});
     var sizes = [1, 2, 3, 5, 8, 12, 25, 35, 50, 75, 100];
     sizes.forEach(function (size) {
         select.appendChild(init("option", { value: size },
@@ -211,6 +379,7 @@ controls.clear = function (cx) {
     input.addEventListener("click", function () {
         cx.canvas.getContext("2d").clearRect(0, 0, cx.canvas.width, cx.canvas.height);
         points.push({size: cx.lineWidth, color: cx.fillStyle, tool: "Clear",});
+        drawGrid()
     });
     return init("span", null, "", input);
 }
@@ -254,6 +423,10 @@ function DrawPoint(cx, p) {
             cx.canvas.getContext("2d").clearRect(0, 0, cx.canvas.width, cx.canvas.height);
             break;
     }
+
+    var canvas = document.getElementById('Canvas')
+    for (let i = 0; i < canvasGrid.length; i++)
+        var dominantColor = getDominantRGB(canvas, i); // TODO Get Color of each rectangle -> link with rec
 
     //Re set the actual color a size selected
     cx.fillStyle = actualColor;
@@ -303,23 +476,19 @@ controls.redo = function (cx) {
 }
 
 controls.switchButton = function(cx) {
-    var input = init("input", {type: "button", value: "SwitchButton"});
+    var input = init("input", {type: "button", value: "Switch"});
     let paintContainer = document.getElementById('paintContainer');
     let spectrogramImage = document.getElementById('spectrogram-image-container');
     let spectrogramInterface = document.getElementById('spectrogram-container-interface-container');
 
     input.addEventListener("click", function () {
-        if (paintContainer.style.display == "none") {
-            paintContainer.style.display = "initial";
-            spectrogramImage.style.display = "none";
+        if (paintContainer.style.visibility == "hidden") {
+            paintContainer.style.visibility = "visible";
             spectrogramImage.style.visibility = "hidden";
-            spectrogramInterface.style.display = "none";
             spectrogramInterface.style.visibility = "hidden";
-        } else if (paintContainer.style.display != "none") {
-            paintContainer.style.display = "none";
-            spectrogramImage.style.display = "initial";
+        } else if (paintContainer.style.display != "visible") {
+            paintContainer.style.visibility = "hidden";
             spectrogramImage.style.visibility = "visible";
-            spectrogramInterface.style.display = "initial";
             spectrogramInterface.style.visibility = "visible";
         }
     });
