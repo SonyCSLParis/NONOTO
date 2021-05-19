@@ -1,4 +1,4 @@
-import LinkClient from './linkClient'
+import { AbletonLinkClient } from './linkClient'
 import * as ControlLabels from '../controlLabels'
 
 import Nexus from '../nexusColored'
@@ -6,6 +6,10 @@ import { PlaybackManager } from '../playback'
 import { Locator } from '../locator'
 import log from 'loglevel'
 
+export function render(
+  linkClient: AbletonLinkClient,
+  playbackManager: PlaybackManager<Locator>
+): void {
   const bottomControlsElementID = 'bottom-controls'
   const bottomControlsGridElement = document.getElementById(
     bottomControlsElementID
@@ -32,9 +36,9 @@ import log from 'loglevel'
   })
   linkEnableButton.on('change', (enable: boolean) => {
     if (enable) {
-      LinkClient.enable(playbackManager)
+      linkClient.enable(playbackManager)
     } else {
-      LinkClient.disable()
+      linkClient.disable()
     }
   })
   ControlLabels.createLabel(
@@ -48,7 +52,7 @@ import log from 'loglevel'
   // Add manual Link-Sync button
   renderSyncButton(abletonLinkSettingsGridspan, playbackManager)
 
-  renderDownbeatDisplay()
+  renderDownbeatDisplay(linkClient)
 }
 
 function renderSyncButton(
@@ -80,7 +84,7 @@ function renderSyncButton(
   )
 }
 
-export function renderDownbeatDisplay(): void {
+export function renderDownbeatDisplay(linkClient: AbletonLinkClient): void {
   const abletonLinkSettingsGridspan = document.getElementById(
     'ableton-link-settings-gridspan'
   )
@@ -104,7 +108,7 @@ export function renderDownbeatDisplay(): void {
   )
 
   let linkDisplayTimeout: NodeJS.Timeout
-  LinkClient.on('downbeat', () => {
+  linkClient.on('downbeat', () => {
     linkDownbeatDisplayButton.down()
     if (linkDisplayTimeout) clearTimeout(linkDisplayTimeout)
     linkDisplayTimeout = setTimeout(() => linkDownbeatDisplayButton.up(), 100)

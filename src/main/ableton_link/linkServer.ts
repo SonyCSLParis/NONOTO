@@ -6,6 +6,7 @@ import LinkSocketModule = require('./linkServer.socket-io')
 // implemented as described in
 // https://github.com/TypeStrong/ts-loader/tree/master/test/comparison-tests/conditionalRequire
 
+// HACK(theis): clean this by creating a proper TypeScript interface and two implementations
 let Server
 
 // defined at compile-time via webpack.DefinePlugin

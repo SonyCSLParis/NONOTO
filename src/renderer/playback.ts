@@ -3,10 +3,8 @@
 import * as Tone from 'tone'
 import * as log from 'loglevel'
 
-import LinkClient from './ableton_link/linkClient'
 import { Locator } from './locator'
-
-log.setLevel(log.levels.INFO)
+import { AbletonLinkClient } from './ableton_link/linkClient'
 
 export interface MinimalPlaybackManager {
   play(): Promise<unknown>
@@ -92,35 +90,64 @@ abstract class VisualPlaybackManager<
 }
 
 abstract class SynchronizedPlaybackManager extends TonePlaybackManager {
+  protected linkClient: AbletonLinkClient | null = null
+
   // Start playback immediately at the beginning of the song
+  // TODO(theis): check if really necessary
   protected startPlaybackNowFromBeginning(): void {
     Tone.getTransport().start('+0.03', '0:0:0')
   }
 
+  // TODO(theis): can this be replaced with super.start()?
+  async synchronizedStartCallback(): Promise<void> {
+    await Tone.getContext().resume()
+    this.startPlaybackNowFromBeginning()
+  }
+
   // Start playback either immediately or in sync with Link if Link is enabled
   async play() {
-    await Tone.getContext().resume()
-    if (!LinkClient.isEnabled()) {
+    if (this.linkClient == null || !this.linkClient.isEnabled()) {
       // start the normal way
-      this.safeStartPlayback()
+      await super.play()
     } else {
       log.info('LINK: Waiting for `downbeat` message...')
       // wait for Link-socket to give downbeat signal
-      await LinkClient.once('downbeat', async () => {
-        this.startPlaybackNowFromBeginning()
-      })
+      this.linkClient.once(
+        'downbeat',
+        this.synchronizedStartCallback.bind(this)
+      )
       log.info('LINK: Received `downbeat` message, starting playback')
     }
+  }
+
+  // Start playback either immediately or in sync with Link if Link is enabled
+  async stop() {
+    if (this.linkClient != null && this.linkClient.isEnabled()) {
+      log.info('LINK: Cancelling previously scheduled playback start')
+      this.linkClient.removeListener(
+        'downbeat',
+        this.synchronizedStartCallback.bind(this)
+      )
+    }
+    await super.stop()
   }
 
   // Set the position in the current measure to the provided phase
   // TODO(theis): should we use the `link.quantum` value?
   synchronizeToLink(): void {
-    if (Tone.getTransport().state == 'started' && LinkClient.isEnabled()) {
+    if (
+      this.linkClient != null &&
+      Tone.getTransport().state == 'started' &&
+      this.linkClient.isEnabled()
+    ) {
       const currentMeasure = this.getCurrentMeasure().toString()
       Tone.getTransport().position =
-        currentMeasure + ':' + LinkClient.getPhaseSynchronous().toString()
+        currentMeasure + ':' + this.linkClient.getPhaseSynchronous().toString()
     }
+  }
+
+  registerLinkClient(linkClient: AbletonLinkClient) {
+    this.linkClient = linkClient
   }
 
   // Helper function to access the current measure in the Transport
@@ -129,7 +156,7 @@ abstract class SynchronizedPlaybackManager extends TonePlaybackManager {
     return parseInt(currentMeasure)
   }
 
-  // Quick-and-dirty automatic phase-locking to Ableton Link
+  // HACK(theis): Quick-and-dirty automatic phase-locking to Ableton Link
   protected scheduleAutomaticResync() {
     new Tone.Loop(() => {
       this.synchronizeToLink()

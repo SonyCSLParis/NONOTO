@@ -1,12 +1,11 @@
-import * as log from 'loglevel'
+import log from 'loglevel'
+import io from 'socket.io-client'
 
 import { BPMControl } from '../numberControl'
 
-const link_channel_prefix: string = require('../../common/default_config.json')[
-  'link_channel_prefix'
-]
+import defaultConfiguration from '../../common/default_config.json'
+const link_channel_prefix: string = defaultConfiguration['link_channel_prefix']
 
-const io = require('socket.io-client')
 // connect to the Ableton Link Node.js server
 let socket: SocketIOClient.Socket
 

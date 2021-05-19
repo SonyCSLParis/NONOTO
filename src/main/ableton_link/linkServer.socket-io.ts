@@ -76,6 +76,10 @@ function stopLinkDownbeatClock(): void {
 
 // Initialize LINK server
 export function attachListeners(): void {
+  // TODO(theis): clean this up
+  // ipcMain.on(link_channel_prefix + 'init', (event, bpm, quantum) => {
+  // });
+
   ipcMain.on(link_channel_prefix + 'ping', (event) => {
     if (isLinkInitialized()) {
       event.sender.send(link_channel_prefix + 'initialized-status', true)
